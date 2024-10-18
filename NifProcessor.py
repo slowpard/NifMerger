@@ -936,6 +936,7 @@ class NifProcessor:
         except Exception as e:
             logging.error(traceback.format_exc())
 
+  
     def process_nif_trigeometry(self, trishape, translation, rotation, scale):
 
         
@@ -1116,7 +1117,8 @@ class NifProcessor:
                         k.g = 1.0
                         k.b = 1.0
                         k.a = 1.0
-                    
+
+
                 vertice_list = []    
                 for vertice in trishape.data.vertices:
                     temp_vertice = pyffi.formats.nif.NifFormat.Vector3()
@@ -1232,7 +1234,6 @@ class NifProcessor:
             elif isinstance(root, pyffi.formats.nif.NifFormat.NiTriStrips):
                 self.process_nif_trigeometry(root, m_translation, m_rotation, f_scale)
             else:
-                print("Unknown type in root node: ", type(root))
                 logging.error(f"Unknown type in root node: {type(root)}")
 
     def GenerateMoppObjects(self):
