@@ -12,6 +12,274 @@ import sys
 from pyffi.utils.withref import ref
 import traceback
 import logging
+if True: 
+    def Vector3_fast_init(self, template = None, argument = None, parent = None):
+        float_object1 = pyffi.object_models.common.Float()
+        float_object2 = pyffi.object_models.common.Float()
+        float_object3 = pyffi.object_models.common.Float()
+        self._x_value_ = float_object1
+        self._y_value_ = float_object2
+        self._z_value_ = float_object3
+        self._items = [float_object1, float_object2, float_object3]
+    pyffi.formats.nif.NifFormat.Vector3.__init__ = Vector3_fast_init
+
+    def Triangle_fast_init(self, template = None, argument = None, parent = None):
+        short_object1 = pyffi.object_models.common.UShort()
+        short_object2 = pyffi.object_models.common.UShort()
+        short_object3 = pyffi.object_models.common.UShort()
+        self._v_1_value_ = short_object1
+        self._v_2_value_ = short_object2
+        self._v_3_value_ = short_object3
+        self._items = [short_object1, short_object2, short_object3]
+    pyffi.formats.nif.NifFormat.Triangle.__init__ = Triangle_fast_init
+if True: 
+    def Color3_fast_init(self, template = None, argument = None, parent = None):
+        float_object1 = pyffi.object_models.common.Float()
+        float_object2 = pyffi.object_models.common.Float()
+        float_object3 = pyffi.object_models.common.Float()
+        self._r_value_ = float_object1
+        self._g_value_ = float_object2
+        self._b_value_ = float_object3
+        self._items = [float_object1, float_object2, float_object3]
+    pyffi.formats.nif.NifFormat.Color3.__init__ = Color3_fast_init
+if True:     
+    def Color4_fast_init(self, template = None, argument = None, parent = None):
+        float_object1 = pyffi.object_models.common.Float()
+        float_object2 = pyffi.object_models.common.Float()
+        float_object3 = pyffi.object_models.common.Float()
+        float_object4 = pyffi.object_models.common.Float()
+        self._r_value_ = float_object1
+        self._g_value_ = float_object2
+        self._b_value_ = float_object3
+        self._a_value_ = float_object4
+        self._items = [float_object1, float_object2, float_object3, float_object4]
+    pyffi.formats.nif.NifFormat.Color4.__init__ = Color4_fast_init
+
+if False: #slow on pypy, fast on cpython
+    def TexCoord_fast_init(self, template = None, argument = None, parent = None):
+        float_object1 = pyffi.object_models.common.Float()
+        float_object2 = pyffi.object_models.common.Float()
+        self._u_value_ = float_object1
+        self._v_value_ = float_object2
+        self._items = [float_object1, float_object2]
+    pyffi.formats.nif.NifFormat.TexCoord.__init__ = TexCoord_fast_init
+
+if True:
+    def Vector3_fast_write(self, stream, data):
+        self._x_value_.write(stream, data)
+        self._y_value_.write(stream, data)
+        self._z_value_.write(stream, data)
+    pyffi.formats.nif.NifFormat.Vector3.write = Vector3_fast_write
+    def Triangle_fast_write(self, stream, data):
+        self._v_1_value_.write(stream, data)
+        self._v_2_value_.write(stream, data)
+        self._v_3_value_.write(stream, data)
+        #self._log_struct(stream, attr)
+    pyffi.formats.nif.NifFormat.Triangle.write = Triangle_fast_write
+    def Color3_fast_write(self, stream, data):
+        self._r_value_.write(stream, data)
+        self._g_value_.write(stream, data)
+        self._b_value_.write(stream, data)  
+    pyffi.formats.nif.NifFormat.Color3.write = Color3_fast_write
+    def Color4_fast_write(self, stream, data):
+        self._r_value_.write(stream, data)
+        self._g_value_.write(stream, data)
+        self._b_value_.write(stream, data)
+        self._a_value_.write(stream, data)
+    pyffi.formats.nif.NifFormat.Color4.write = Color4_fast_write
+    def TexCoord_fast_write(self, stream, data):
+        self._u_value_.write(stream, data)
+        self._v_value_.write(stream, data)
+    pyffi.formats.nif.NifFormat.TexCoord.write = TexCoord_fast_write 
+
+    def Vector3_get_size(self, data):
+        return 12
+    def Triangle_get_size(self, data):
+        return 6    
+    def TexCoord_get_size(self, data):
+        return 8
+    def Color4_get_size(self, data):
+        return 16
+    def Color3_get_size(self, data):
+        return 12
+    pyffi.formats.nif.NifFormat.Vector3.get_size = Vector3_get_size
+    pyffi.formats.nif.NifFormat.Triangle.get_size = Triangle_get_size
+    pyffi.formats.nif.NifFormat.Color4.get_size = Color4_get_size
+    pyffi.formats.nif.NifFormat.Color3.get_size = Color3_get_size
+    pyffi.formats.nif.NifFormat.TexCoord.get_size = TexCoord_get_size
+
+ 
+    def Vector3_get_x_value(self):
+        return self._x_value_._value
+    def Vector3_set_x_value(self, value):
+        self._x_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Vector3, 'x', property(Vector3_get_x_value, Vector3_set_x_value))
+
+    def Vector3_get_y_value(self):
+        return self._y_value_._value
+    def Vector3_set_y_value(self, value):
+        self._y_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Vector3, 'y', property(Vector3_get_y_value, Vector3_set_y_value))
+
+
+    def Vector3_get_z_value(self):
+        return self._z_value_._value
+    def Vector3_set_z_value(self, value):
+        self._z_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Vector3, 'z', property(Vector3_get_z_value, Vector3_set_z_value))
+
+
+    def Triangle_get_v_1_value(self):
+        return self._v_1_value_._value
+    def Triangle_set_v_1_value(self, value):
+        self._v_1_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Triangle, 'v_1', property(Triangle_get_v_1_value, Triangle_set_v_1_value))
+
+    def Triangle_get_v_2_value(self):
+        return self._v_2_value_._value
+    def Triangle_set_v_2_value(self, value):
+        self._v_2_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Triangle, 'v_2', property(Triangle_get_v_2_value, Triangle_set_v_2_value))
+
+    def Triangle_get_v_3_value(self):
+        return self._v_3_value_._value
+    def Triangle_set_v_3_value(self, value):
+        self._v_3_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Triangle, 'v_3', property(Triangle_get_v_3_value, Triangle_set_v_3_value))
+
+    def Color3_get_r_value(self):
+        return self._r_value_._value
+    def Color3_set_r_value(self, value):
+        self._r_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color3, 'r', property(Color3_get_r_value, Color3_set_r_value))
+  
+    def Color3_get_g_value(self):
+        return self._g_value_._value
+    def Color3_set_g_value(self, value):
+        self._g_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color3, 'g', property(Color3_get_g_value, Color3_set_g_value))
+
+    def Color3_get_b_value(self):
+        return self._b_value_._value
+    def Color3_set_b_value(self, value):
+        self._b_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color3, 'b', property(Color3_get_b_value, Color3_set_b_value))
+
+    def Color4_get_r_value(self):
+        return self._r_value_._value
+    def Color4_set_r_value(self, value):
+        self._r_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color4, 'r', property(Color4_get_r_value, Color4_set_r_value))
+
+    def Color4_get_g_value(self):
+        return self._g_value_._value
+    def Color4_set_g_value(self, value):
+        self._g_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color4, 'g', property(Color4_get_g_value, Color4_set_g_value))
+
+    def Color4_get_b_value(self):
+        return self._b_value_._value
+    def Color4_set_b_value(self, value):
+        self._b_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color4, 'b', property(Color4_get_b_value, Color4_set_b_value))
+
+    def Color4_get_a_value(self):
+        return self._a_value_._value
+    def Color4_set_a_value(self, value):
+        self._a_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.Color4, 'a', property(Color4_get_a_value, Color4_set_a_value))
+
+
+    def TexCoord_get_u_value(self):
+        return self._u_value_._value
+    def TexCoord_set_u_value(self, value):
+        self._u_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.TexCoord, 'u', property(TexCoord_get_u_value, TexCoord_set_u_value))
+
+    def TexCoord_get_v_value(self):
+        return self._v_value_._value
+    def TexCoord_set_v_value(self, value):
+        self._v_value_._value = value
+    setattr(pyffi.formats.nif.NifFormat.TexCoord, 'v', property(TexCoord_get_v_value, TexCoord_set_v_value))
+
+
+    def Vector3_fast_read(self, stream, data):
+        self.x = self._x_value_
+        self.y = self._y_value_
+        self.z = self._z_value_
+        self.x.arg = self.y.arg = self.z.arg = None
+        self.x.read(stream, data)
+        self.y.read(stream, data)
+        self.z.read(stream, data)
+    pyffi.formats.nif.NifFormat.Vector3.read = Vector3_fast_read
+
+    def Triangle_fast_read(self, stream, data):
+        self.v_1 = self._v_1_value_
+        self.v_2 = self._v_2_value_
+        self.v_3 = self._v_3_value_
+        self.v_1.arg = self.v_2.arg = self.v_3.arg = None
+        self.v_1.read(stream, data)
+        self.v_2.read(stream, data)
+        self.v_3.read(stream, data)
+    pyffi.formats.nif.NifFormat.Triangle.read = Triangle_fast_read
+
+
+
+    def Color3_fast_read(self, stream, data):
+        self.r = self._r_value_
+        self.g = self._g_value_
+        self.b = self._b_value_
+        self.r.arg = self.g.arg = self.b.arg = None
+        self.r.read(stream, data)
+        self.g.read(stream, data)
+        self.b.read(stream, data)
+    pyffi.formats.nif.NifFormat.Color3.read = Color3_fast_read
+
+    def Color4_fast_read(self, stream, data):
+        self.r = self._r_value_
+        self.g = self._g_value_
+        self.b = self._b_value_
+        self.a = self._a_value_
+        self.r.arg = self.g.arg = self.b.arg = self.a.arg = None
+        self.r.read(stream, data)
+        self.g.read(stream, data)
+        self.b.read(stream, data)
+        self.a.read(stream, data)
+    pyffi.formats.nif.NifFormat.Color4.read = Color4_fast_read
+
+if False:  
+    def TexCoord_fast_read(self, stream, data):
+        self.u = self._u_value_
+        self.v = self._v_value_
+        self.u.arg = self.v.arg = None
+        self.u.read(stream, data)
+        self.v.read(stream, data)
+    pyffi.formats.nif.NifFormat.TexCoord.read = TexCoord_fast_read
+
+if True:
+
+    #makes perf MUCH worse on pypy but much faster on cpython ¯\_(ツ)_/¯ 
+    def log_struct_fast(self, stream, attr):
+        pass
+    
+    #this still does something but less than the original function
+    #commenting out stuff actually makes it run worse idk
+    #OpTiMiZaTiOn
+    def log_struct_fast(self, stream, attr):
+        val = getattr(self, "_%s_value_" % attr.name)  # debug
+
+        try:
+            pass
+            out = val.get_value()  # debug
+        except Exception:
+            pass
+        else:
+            pass
+            #offset = stream.tell()
+            #hex_ver = "0x%08X" % offset
+            #self.logger.debug("* {0}.{1} = {2} : type {3} at {4} offset {5} - ".format(self.__class__.__name__, attr.name, str(out), attr.type_, hex_ver, offset ))  # debug
+
+    pyffi.object_models.xml.struct_.StructBase._log_struct = log_struct_fast
 
 
 class NifProcessor:
