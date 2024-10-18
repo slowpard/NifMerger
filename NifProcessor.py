@@ -1,4 +1,3 @@
-import pandas as pd
 import os
 import shutil
 import time
@@ -12,6 +11,8 @@ import sys
 from pyffi.utils.withref import ref
 import traceback
 import logging
+import csv
+
 if True: 
     def Vector3_fast_init(self, template = None, argument = None, parent = None):
         float_object1 = pyffi.object_models.common.Float()
@@ -491,8 +492,12 @@ class NifProcessor:
 
 
     def ReadAtlasData(self):
-        self.atlas_data = pd.read_csv(self.ATLAS_CSV_PATH, sep=',')
-        self.atlas_data.set_index('name', inplace=True)
+        self.atlas_data = {}
+        with open(self.ATLAS_CSV_PATH, newline='', encoding='utf-8') as csvfile:
+            csv_file = csv.DictReader(csvfile)
+            for row in csv_file:
+                name = row['name']
+                self.atlas_data[name.lower()] = row
 
     def ReturnAtlasData(self, shape):
         tex_path = None
