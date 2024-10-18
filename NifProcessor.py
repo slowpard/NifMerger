@@ -951,6 +951,7 @@ class NifProcessor:
         target_shape = None
         texture_property = None
         stencil_property = None
+        material_property = None
         alpha_found = False
         atlas_obj = None
         for property in trishape.properties:
