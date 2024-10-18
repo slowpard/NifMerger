@@ -510,8 +510,7 @@ class NifProcessor:
         if not tex_path:
             return None
         else:
-            #print(self.atlas_data)
-            if str(tex_path.decode('UTF-8')).lower() in (self.atlas_data.index.astype(str).str.lower()):
+            if str(tex_path.decode('windows-1252')).lower() in self.atlas_data:
                     
                     logging.debug(f'Atlas found for shape {str(shape.name.decode("windows-1252"))}')
                     for uv in shape.data.uv_sets[0]:
