@@ -524,7 +524,7 @@ class NifProcessor:
                             return None
 
 
-                    return self.atlas_data[str(tex_path.decode('UTF-8')).lower() == self.atlas_data.index.astype(str).str.lower()].iloc[0].to_dict()
+                    return self.atlas_data[tex_path.decode('windows-1252').lower()]
             else:
                 return None
 
@@ -887,7 +887,7 @@ class NifProcessor:
 
                 target_sequence = None
 
-                if str(k.name.decode('UTF-8')) in self.AWLS_ANIM_GROUP_LIST:
+                if str(k.name.decode('windows-1252')) in self.AWLS_ANIM_GROUP_LIST:
                     for s in self.master_nif.roots[0].controller.controller_sequences:
                         if s.name == k.name:
                                 target_sequence = s
@@ -956,12 +956,12 @@ class NifProcessor:
         atlas_obj = None
         for property in trishape.properties:
             if isinstance(property, pyffi.formats.nif.NifFormat.NiTexturingProperty):
-                texture_path = str(property.base_texture.source.file_name.decode('UTF-8'))
+                texture_path = str(property.base_texture.source.file_name.decode('windows-1252'))
                 texture_path_raw = property.base_texture.source.file_name
                 texture_apply_mode = property.apply_mode
                 texture_property = property
             elif isinstance(property, pyffi.formats.nif.NifFormat.NiMaterialProperty):
-                material_name = str(property.name.decode('UTF-8'))
+                material_name = str(property.name.decode('windows-1252'))
                 material_name_raw = property.name
                 material_glossiness = property.glossiness
                 material_alpha = property.alpha
@@ -1034,7 +1034,7 @@ class NifProcessor:
                     #tr_points_check = ((shape.data.num_triangle_points + trishape.data.num_triangle_points) < 65000)
                     for k in shape.properties:
                         if isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
-                            texture_check = (texture_path.lower() == str(k.base_texture.source.file_name.decode('UTF-8')).lower())
+                            texture_check = (texture_path.lower() == str(k.base_texture.source.file_name.decode('windows-1252')).lower())
                             apply_mode_check = (texture_apply_mode == k.apply_mode)
                         elif isinstance(k, pyffi.formats.nif.NifFormat.NiMaterialProperty):
                             material_g_check = (material_glossiness == k.glossiness)
@@ -1081,7 +1081,7 @@ class NifProcessor:
                 #self.material_list.loc[material_name] = [str(trishape.name.decode('UTF-8')), material_glossiness, material_alpha, str(texture_path)]
                 self.master_nif.roots[0].add_child(pyffi.formats.nif.NifFormat.NiTriShape())
                 trishape_t = self.master_nif.roots[0].children[-1]
-                trishape_t.name = str(trishape.name.decode('UTF-8'))
+                trishape_t.name = str(trishape.name.decode('windows-1252'))
                 trishape_t.flags = trishape.flags
 
                 for k in trishape.properties:
@@ -1310,6 +1310,7 @@ class NifProcessor:
         else:
             logging.error(f'Not a NIF file! {nif_path}')
 
+    
     def SaveNif(self, nif_path):
 
         logging.debug(f'Saving {nif_path}')
@@ -1325,8 +1326,6 @@ class NifProcessor:
 
     def CleanTemplates(self):
         
-
-
         self.nif_template = open(self.EMPTY_NIF_PATH, 'rb')
 
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
@@ -1436,5 +1435,4 @@ class NifProcessor:
                     self.UpdateTangentSpaces()
                     self.CleanAnimationController()
                     self.SaveNif(os.path.join(output_folder, os.path.relpath(file_name, folder)))
-
 
