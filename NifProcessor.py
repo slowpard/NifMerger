@@ -288,6 +288,7 @@ class NifProcessor:
 
     #paths
     ATLAS_CSV_PATH = r'S:\IC LOD Project\atlas.csv'
+    EMPTY_NIF_PATH = r'S:\IC LOD Project\resources\empty_ninode.nif'
 
     #suppressing annoying spam of havok credits but don't want to suppress errors, so only hijacking the moppper credit function
     #since can't avoid making a new line, let's at least have this message
@@ -337,12 +338,11 @@ class NifProcessor:
 
     def __init__(self):
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
-        self.material_list = []
         self.anim_list = []
         self.nif_template = None
         self.merged_data = []
         self.shapes_merged = 0
-        self.atlas_data = pd.DataFrame
+        self.atlas_data = {}
 
 
     def MatrixfromEulerAngles(self, x, y, z):
@@ -1326,10 +1326,8 @@ class NifProcessor:
     def CleanTemplates(self):
         
 
-        self.material_list = pd.DataFrame(columns=['name', 'shapename', 'glossiness', 'alpha', 'texture_path'])
-        self.material_list = self.material_list.set_index('name')
 
-        self.nif_template = open(r"S:\IC LOD Project\resources\empty_ninode.nif", 'rb')
+        self.nif_template = open(self.EMPTY_NIF_PATH, 'rb')
 
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
         self.master_nif.read(self.nif_template)
