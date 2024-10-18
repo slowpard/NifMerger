@@ -1117,18 +1117,16 @@ class NifProcessor:
                         k.b = 1.0
                         k.a = 1.0
                     
+                vertice_list = []    
                 for vertice in trishape.data.vertices:
                     temp_vertice = pyffi.formats.nif.NifFormat.Vector3()
                     adjusted_vector = np.matmul(f_scale * np.array([vertice.x, vertice.y, vertice.z]), m_rotation)
                     temp_vertice.x = adjusted_vector[0] + m_translation[0]
                     temp_vertice.y = adjusted_vector[1] + m_translation[1]
-                    temp_vertice.z = adjusted_vector[2] + m_translation[2]                           
+                    temp_vertice.z = adjusted_vector[2] + m_translation[2]
+                    vertice_list.append(np.add(adjusted_vector, m_translation))                          
                     target_shape.data.vertices.append(temp_vertice)
 
-                vertice_list = []
-                for vertice in target_shape.data.vertices:
-                    vertice_list.append([vertice.x, vertice.y, vertice.z])
-                vertice_list = np.array(vertice_list)
                 average_point = np.mean(vertice_list, axis=0)
                 distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
                 target_shape.data.center.x = average_point[0]
