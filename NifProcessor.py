@@ -13,6 +13,11 @@ import traceback
 import logging
 import csv
 
+
+#pyffi has extremly abstract struct classes defined from xmls
+#this is a hack to make them *much* faster to work with 
+
+
 if True: 
     def Vector3_fast_init(self, template = None, argument = None, parent = None):
         float_object1 = pyffi.object_models.common.Float()
@@ -343,7 +348,8 @@ class NifProcessor:
         self.merged_data = []
         self.shapes_merged = 0
         self.atlas_data = {}
-
+        self.current_nif_path = ''
+        self.triangle_count = 0
 
     def MatrixfromEulerAngles(self, x, y, z):
         #xyz
@@ -503,7 +509,9 @@ class NifProcessor:
         tex_path = None
         for property in shape.properties:
             if isinstance(property, pyffi.formats.nif.NifFormat.NiTexturingProperty):
-                tex_path = property.base_texture.source.file_name
+                if property.base_texture.source:
+                    if property.base_texture.source.file_name:
+                        tex_path = property.base_texture.source.file_name
 
 
 
@@ -512,14 +520,14 @@ class NifProcessor:
         else:
             if str(tex_path.decode('windows-1252')).lower() in self.atlas_data:
                     
-                    logging.debug(f'Atlas found for shape {str(shape.name.decode("windows-1252"))}')
+                    logging.debug(f'{self.current_nif_path}: Atlas found for shape {str(shape.name.decode("windows-1252"))}')
                     for uv in shape.data.uv_sets[0]:
                         limit = self.ATLAS_UV_COORDINATES_LIMIT
                         if ((uv.u > 1 + limit) or 
                             (uv.v > 1 + limit) or
                             (uv.u < -limit) or
                             (uv.v < -limit)):
-                            logging.warning(f'Shape {str(shape.name.decode("windows-1252"))} not atlassed - UVs out of bounds')
+                            logging.warning(f'{self.current_nif_path}: Shape {str(shape.name.decode("windows-1252"))} not atlassed - UVs out of bounds')
                             return None
 
 
@@ -658,7 +666,7 @@ class NifProcessor:
         if isinstance(node.shape, pyffi.formats.nif.NifFormat.bhkBoxShape):
             self.collisions_process_box_object(node.shape, translation, rotation, scale, material, layer, transform_matrix)
         else:
-            logging.warning(f"Unsupported collision geometry format in ConvextTransformShape: {type(node.shape)}")
+            logging.warning(f"{self.current_nif_path}: Unsupported collision geometry format in ConvextTransformShape: {type(node.shape)}")
             
 
     def process_collision_object(self, node, translation, rotation, scale):
@@ -690,7 +698,7 @@ class NifProcessor:
                     if isinstance(obj, pyffi.formats.nif.NifFormat.bhkConvexTransformShape):
                         self.collisions_process_bhkConvexTransformShape(obj, m_translation, m_rotation, f_scale, layer)
                     else:
-                        logging.warning(f"Unsupported collision node format in ListShape: {type(obj)}")
+                        logging.warning(f"{self.current_nif_path}: Unsupported collision node format in ListShape: {type(obj)}")
 
             elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkConvexVerticesShape):
                 target_collision = None 
@@ -740,9 +748,9 @@ class NifProcessor:
                             vertices_in_triangle.append(j)
                     #print(vertices_in_triangle)
                     if len(vertices_in_triangle) < 3:
-                        logging.warning("Skipping normal - less than 3 vertices in triangle. Try increasing self.CONVEX_PLANE_MAX_DISTANCE")
+                        logging.warning(f"{self.current_nif_path}: Skipping normal - less than 3 vertices in triangle. Try increasing self.CONVEX_PLANE_MAX_DISTANCE")
                     elif len(vertices_in_triangle) > 4:
-                        logging.warning("Skipping normal - more than 4 vertices in triangle. Try decreasing self.CONVEX_PLANE_MAX_DISTANCE")
+                        logging.warning(f"{self.current_nif_path}: Skipping normal - more than 4 vertices in triangle. Try decreasing self.CONVEX_PLANE_MAX_DISTANCE")
                     else:
                         temp_hkTriangle = pyffi.formats.nif.NifFormat.hkTriangle()
                         temp_hkTriangle.triangle.v_1 = vertices_in_triangle[0] + triangles_offset
@@ -877,7 +885,7 @@ class NifProcessor:
                     vertex_counter += num_vertices
 
             else:
-                logging.warning('Unsupported collision geometry format, only bhkPackedNiTriStripsShape or bhkConvexVerticesShape is supported')
+                logging.warning(f'{self.current_nif_path}: Unsupported collision geometry format, only bhkPackedNiTriStripsShape or bhkConvexVerticesShape is supported')
 
 
     def process_animations(self, controller):
@@ -902,14 +910,19 @@ class NifProcessor:
                         #print(id(target_sequence.controlled_blocks[-1]))
                     target_sequence.num_controlled_blocks = len(target_sequence.controlled_blocks)
 
-    def process_nif_node(self, node, translation, rotation, scale):
+    def process_nif_node(self, node, translation, rotation, scale, is_root = False):
 
         try:
-            f_scale = node.scale * scale
-            
-            m_translation = translation +  np.matmul(scale * np.array([node.translation.x, node.translation.y, node.translation.z]), rotation)
-            
+
             m_rotation = np.matmul(self.Matrix33toArray(node.rotation), rotation)
+
+            if is_root and np.allclose(rotation, np.identity(3)):
+                f_scale = scale
+                m_translation = translation
+            else:
+                f_scale = node.scale * scale
+                m_translation = translation +  np.matmul(scale * np.array([node.translation.x, node.translation.y, node.translation.z]), rotation)
+
             
             if (not self.IGNORE_AWLS) and (node.name == 'Smoke'): #AWLS smoke
                 if len(node.children) > 0:
@@ -931,7 +944,7 @@ class NifProcessor:
                 elif isinstance(child, pyffi.formats.nif.NifFormat.NiTriStrips):
                     self.process_nif_trigeometry(child, m_translation, m_rotation, f_scale)
                 else:
-                    logging.warning(f"Unexpected type in NiNode: {type(child)}")
+                    logging.warning(f"{self.current_nif_path}: Unexpected type in NiNode: {type(child)}")
                     
         except Exception as e:
             logging.error(traceback.format_exc())
@@ -955,10 +968,13 @@ class NifProcessor:
         material_property = None
         alpha_found = False
         atlas_obj = None
+        is_lava = False
+        texture_apply_mode = -1
         for property in trishape.properties:
             if isinstance(property, pyffi.formats.nif.NifFormat.NiTexturingProperty):
-                texture_path = str(property.base_texture.source.file_name.decode('windows-1252'))
-                texture_path_raw = property.base_texture.source.file_name
+                if property.base_texture.source:
+                    texture_path = str(property.base_texture.source.file_name.decode('windows-1252'))
+                    texture_path_raw = property.base_texture.source.file_name
                 texture_apply_mode = property.apply_mode
                 texture_property = property
             elif isinstance(property, pyffi.formats.nif.NifFormat.NiMaterialProperty):
@@ -967,16 +983,18 @@ class NifProcessor:
                 material_glossiness = property.glossiness
                 material_alpha = property.alpha
                 material_property = property
+                if material_name.lower() == 'lava':
+                    is_lava = True
             elif isinstance(property, pyffi.formats.nif.NifFormat.NiVertexColorProperty):
                 if (property.flags != 40 and property.flags != 0) or property.vertex_mode != 2 or property.lighting_mode != 1:
                     #non-default values for vertex color -- not supported yet
                     # flags : 0x28
                     # vertex_mode : VERT_MODE_SRC_AMB_DIF
                     # lighting_mode : LIGHT_MODE_EMI_AMB_DIF
-                    logging.warning("NiVertexColorProperty with non-standard parameters found, these parameters will be ignored! Given that the effect is likely very specialized, not something which should be merged automatically to begin with.")
+                    logging.warning(f"{self.current_nif_path}: NiVertexColorProperty with non-standard parameters found, these parameters will be ignored! Given that the effect is likely very specialized, not something which should be merged automatically to begin with.")
             elif isinstance(property, pyffi.formats.nif.NifFormat.NiSpecularProperty):
                 if property.flags == 0:
-                    logging.warningrint("NiSpecularProperty with specularity flag disabled, will be ignored (likely doesn't do anything in Oblivion to begin with)")
+                    logging.warningrint(f"{self.current_nif_path}: NiSpecularProperty with specularity flag disabled, will be ignored (likely doesn't do anything in Oblivion to begin with)")
             elif isinstance(property, pyffi.formats.nif.NifFormat.NiStencilProperty):
                 stencil_property = property
                 #if property.stencil_enabled == 1:
@@ -986,7 +1004,7 @@ class NifProcessor:
                 alpha_flags = property.flags
                 alpha_threshold = property.threshold
             else:
-                logging.warning(f"Unknown/unsupported property in trishape: {type(property)}")
+                logging.warning(f"{self.current_nif_path}: Unknown/unsupported property in trishape: {type(property)}")
         #try:
         atlas_obj = self.ReturnAtlasData(trishape)
         #except:
@@ -997,10 +1015,10 @@ class NifProcessor:
         elif self.MERGE_ATLASSED_SHAPES_ONLY:
             return
         
-        if (not texture_property) and (texture_path == ''):
-            logging.error(f"Skipping shape: No texture found for trishape {trishape.name}")
+        if (not texture_path) and (not is_lava):
+            logging.error(f"{self.current_nif_path}: Skipping shape: No texture found for trishape {trishape.name}")
         elif not material_property:
-            logging.error(f"Skipping shape: No material found for trishape {trishape.name}")
+            logging.error(f"{self.current_nif_path}: Skipping shape: No material found for trishape {trishape.name}")
         else:        
             
             for shape in self.master_nif.roots[0].children:
@@ -1017,7 +1035,7 @@ class NifProcessor:
                 specular_c_check = False
                 emissive_c_check = False
                 alpha_check = False
-
+                lava_check = not is_lava
                 if alpha_found:
                     alpha_check = False
                 else:
@@ -1056,7 +1074,11 @@ class NifProcessor:
                             else:
                                 specular_c_check = self.ColorComparer(material_property.specular_color, k.specular_color, self.MATERIAL_COLOR_MERGING_DISTANCE) 
 
-                            emissive_c_check = self.ColorComparer(material_property.emissive_color, k.emissive_color, self.MATERIAL_COLOR_MERGING_DISTANCE) 
+                            emissive_c_check = self.ColorComparer(material_property.emissive_color, k.emissive_color, self.MATERIAL_COLOR_MERGING_DISTANCE)
+
+                            if k.name.decode('windows-1252').lower() == 'lava':
+                                lava_check = True
+                            
                         elif isinstance(k, pyffi.formats.nif.NifFormat.NiStencilProperty):
                             if not stencil_property:
                                 stencil_check = False
@@ -1071,9 +1093,9 @@ class NifProcessor:
                             else:
                                 if alpha_flags == k.flags and alpha_threshold == k.threshold:
                                     alpha_check = True
-                
+
                     if texture_check and material_g_check and material_a_check and tr_points_check and triag_check and poly_check and apply_mode_check \
-                        and ambient_c_check and diffuse_c_check and specular_c_check and emissive_c_check and stencil_check and alpha_check:
+                        and ambient_c_check and diffuse_c_check and specular_c_check and emissive_c_check and stencil_check and alpha_check and lava_check:
                         target_shape = shape
                         break
 
@@ -1119,23 +1141,15 @@ class NifProcessor:
                         k.a = 1.0
 
 
-                vertice_list = []    
-                for vertice in trishape.data.vertices:
+                  
+                for i, vertice in enumerate(trishape.data.vertices):
                     temp_vertice = pyffi.formats.nif.NifFormat.Vector3()
                     adjusted_vector = np.matmul(f_scale * np.array([vertice.x, vertice.y, vertice.z]), m_rotation)
                     temp_vertice.x = adjusted_vector[0] + m_translation[0]
                     temp_vertice.y = adjusted_vector[1] + m_translation[1]
-                    temp_vertice.z = adjusted_vector[2] + m_translation[2]
-                    vertice_list.append(np.add(adjusted_vector, m_translation))                          
+                    temp_vertice.z = adjusted_vector[2] + m_translation[2]                          
                     target_shape.data.vertices.append(temp_vertice)
 
-                average_point = np.mean(vertice_list, axis=0)
-                distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
-                target_shape.data.center.x = average_point[0]
-                target_shape.data.center.y = average_point[1]
-                target_shape.data.center.z = average_point[2]
-                target_shape.data.radius = distance
-                
 
                 for normal in trishape.data.normals:
                     normal_vector = np.matmul(np.array([normal.x, normal.y, normal.z]), m_rotation)
@@ -1161,7 +1175,7 @@ class NifProcessor:
                     else:
                         target_shape.data.uv_sets[0].append(uv)
 
-
+                pre_triangle_count = len(target_shape.data.triangles)
                 if isinstance(trishape, pyffi.formats.nif.NifFormat.NiTriShape):
                     for triangle in trishape.data.triangles:
                         temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
@@ -1188,9 +1202,10 @@ class NifProcessor:
                 target_shape.data.num_triangles = len(target_shape.data.triangles) #+= trishape.data.num_triangles
                 target_shape.data.num_triangle_points = target_shape.data.num_triangles * 3
 
+                self.triangle_count += len(target_shape.data.triangles) - pre_triangle_count
 
                 if len(target_shape.data.normals) < len(target_shape.data.vertices):
-                    logging.warning(f"WARNING: shape {trishape.name} doesn't have normals, dummy normals will be added. This will cause visual artifacts.")
+                    logging.warning(f"{self.current_nif_path}: WARNING: shape {trishape.name} doesn't have normals, dummy normals will be added. This will cause visual artifacts.")
                 #just a workaround for missing normals crashing the saving routine
                 #shouldn't merge meshes like this to begin with, fix them with Blender first
                 while len(target_shape.data.normals) < len(target_shape.data.vertices):
@@ -1218,6 +1233,50 @@ class NifProcessor:
                                 self.master_nif.roots[0].controller.object_palette.num_objs += 1
 
 
+    def update_nif_radius_and_center(self):
+                
+        for shape in self.master_nif.roots[0].children:
+            if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
+                vertice_list = np.zeros((len(shape.data.vertices), 3)) 
+                for i, vertice in enumerate(shape.data.vertices):
+                    vertice_list[i] = [vertice.x, vertice.y, vertice.z]
+                #average_point = np.mean(vertice_list, axis=0)
+                #distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
+                average_point, distance = self.ritter_bounding_sphere(vertice_list)
+                shape.data.center.x = average_point[0]
+                shape.data.center.y = average_point[1]
+                shape.data.center.z = average_point[2]
+                shape.data.radius = distance
+                
+                vertice_list = None
+
+                               
+    def ritter_bounding_sphere(self, points):
+        
+        #choose some point, choose the fartherst point from it
+        p1 = points[0]
+        distances = np.linalg.norm(points - p1, axis=1)
+        p2 = points[np.argmax(distances)]
+        
+        #choose fartherst point from p2
+        distances = np.linalg.norm(points - p2, axis=1)
+        p3 = points[np.argmax(distances)]
+        
+        #create a  sphere with center at midpoint of A and B, radius half their distance
+        center = (p2 + p3) / 2
+        radius = np.linalg.norm(p2 - p3) / 2
+        
+        #now expand the sphere
+        for p in points:
+            dist_to_center = np.linalg.norm(p - center)
+            if dist_to_center > radius:
+                #if a point is outside the sphere, move/expand the sphere to include it
+                new_radius = (radius + dist_to_center) / 2
+                center += (p - center) * ((dist_to_center - radius) / (2 * dist_to_center))
+                radius = new_radius
+    
+        return center, radius
+    
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
         m_rotation = self.MatrixfromEulerAngles_zyx(rotation[0], rotation[1], rotation[2])
@@ -1232,13 +1291,13 @@ class NifProcessor:
                     pass
             
             if isinstance(root, pyffi.formats.nif.NifFormat.NiNode):
-                self.process_nif_node(root, m_translation, m_rotation, f_scale)
+                self.process_nif_node(root, m_translation, m_rotation, f_scale, is_root = True)
             elif isinstance(root, pyffi.formats.nif.NifFormat.NiTriShape):
                 self.process_nif_trigeometry(root, m_translation, m_rotation, f_scale)
             elif isinstance(root, pyffi.formats.nif.NifFormat.NiTriStrips):
                 self.process_nif_trigeometry(root, m_translation, m_rotation, f_scale)
             else:
-                logging.error(f"Unknown type in root node: {type(root)}")
+                logging.error(f"{self.current_nif_path}: Unknown type in root node: {type(root)}")
 
     def GenerateMoppObjects(self):
         if self.IGNORE_COLLISIONS:
@@ -1294,6 +1353,7 @@ class NifProcessor:
         
     def ProcessNif(self, nif_path, translation, rotation, scale):
         logging.debug(f'Processing {nif_path} at position {translation}')
+        self.current_nif_path = nif_path
         if nif_path.endswith('.nif'):
             self.shapes_merged = 0
             try:
@@ -1305,6 +1365,8 @@ class NifProcessor:
                     #print('Shapes merged: ', str(self.shapes_merged))
                     self.merged_data.append([nif_path, self.shapes_merged])
                     stream.close()
+                    data = None
+                    stream = None
                 except FileNotFoundError:
                     logging.error(f'File not found: {nif_path}')
             except Exception as e:
@@ -1317,7 +1379,7 @@ class NifProcessor:
     def SaveNif(self, nif_path):
 
         logging.debug(f'Saving {nif_path}')
-        
+        self.update_nif_radius_and_center()
         directory = os.path.dirname(nif_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -1326,6 +1388,9 @@ class NifProcessor:
         self.master_nif.write(new_stream)
         new_stream.close()
         self.nif_template.close()
+        new_stream = None
+        self.master_nif = None
+        self.nif_template = None
 
     def CleanTemplates(self):
         
@@ -1335,6 +1400,8 @@ class NifProcessor:
         self.master_nif.read(self.nif_template)
 
         self.anim_list = []
+
+        self.triangle_count = 0
 
     def MiddleOfCellCalc(self, cell_x, cell_y):
         
