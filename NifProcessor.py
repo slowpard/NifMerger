@@ -1242,7 +1242,7 @@ class NifProcessor:
                     vertice_list[i] = [vertice.x, vertice.y, vertice.z]
                 #average_point = np.mean(vertice_list, axis=0)
                 #distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
-                average_point, distance = self.ritter_bounding_sphere(vertice_list)
+                average_point, distance = self.simple_bounding_box(vertice_list)
                 shape.data.center.x = average_point[0]
                 shape.data.center.y = average_point[1]
                 shape.data.center.z = average_point[2]
@@ -1250,32 +1250,45 @@ class NifProcessor:
                 
                 vertice_list = None
 
-                               
+    def simple_bounding_box(self, points):
+        
+        min_x = np.min(points[:, 0])
+        max_x = np.max(points[:, 0])
+        min_y = np.min(points[:, 1])
+        max_y = np.max(points[:, 1])
+        min_z = np.min(points[:, 2])
+        max_z = np.max(points[:, 2])
+
+        center = np.array([(min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2])
+        radius = np.max([max_x - min_x, max_y - min_y, max_z - min_z]) / 2
+
+        return center, radius
+
     def ritter_bounding_sphere(self, points):
         
         #choose some point, choose the fartherst point from it
         p1 = points[0]
-        distances = np.linalg.norm(points - p1, axis=1)
+        distances = np.sum((points - p1) ** 2, axis=1)
         p2 = points[np.argmax(distances)]
         
         #choose fartherst point from p2
-        distances = np.linalg.norm(points - p2, axis=1)
+        distances = np.sum((points - p2) ** 2, axis=1)
         p3 = points[np.argmax(distances)]
         
         #create a  sphere with center at midpoint of A and B, radius half their distance
         center = (p2 + p3) / 2
-        radius = np.linalg.norm(p2 - p3) / 2
+        radius_sq = np.sum((p2 - p3) ** 2) / 4
         
         #now expand the sphere
         for p in points:
-            dist_to_center = np.linalg.norm(p - center)
+            dist_to_center = np.sum((p - center) ** 2)
             if dist_to_center > radius:
                 #if a point is outside the sphere, move/expand the sphere to include it
                 new_radius = (radius + dist_to_center) / 2
                 center += (p - center) * ((dist_to_center - radius) / (2 * dist_to_center))
                 radius = new_radius
     
-        return center, radius
+        return center, math.sqrt(radius)
     
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
@@ -1329,7 +1342,6 @@ class NifProcessor:
                 n.update_tangent_space()
 
     def CleanAnimationController(self):
-
         #AWLS cleanup
         
         useful_sequences = []
