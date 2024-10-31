@@ -350,6 +350,7 @@ class NifProcessor:
         self.atlas_data = {}
         self.current_nif_path = ''
         self.triangle_count = 0
+        self.texture_list = []
 
     def MatrixfromEulerAngles(self, x, y, z):
         #xyz
@@ -1113,6 +1114,9 @@ class NifProcessor:
                     trishape_t.properties[-1] = type(k)().deepcopy(k)                    
                     if atlas_obj and isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
                         trishape_t.properties[-1].base_texture.source.file_name = texture_path
+                    if isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
+                        if property.base_texture.source:
+                            self.texture_list.append(trishape_t.properties[-1].base_texture.source.file_name)
 
 
                 trishape_t.data = pyffi.formats.nif.NifFormat.NiTriShapeData()
@@ -1414,6 +1418,8 @@ class NifProcessor:
         self.anim_list = []
 
         self.triangle_count = 0
+
+        self.texture_list = []
 
     def MiddleOfCellCalc(self, cell_x, cell_y):
         
