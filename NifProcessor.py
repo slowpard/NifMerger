@@ -720,6 +720,16 @@ class NifProcessor:
             self.collisions_process_box_object(node.shape, translation, rotation, scale, material, layer, transform_matrix)
         else:
             logging.warning(f"{self.current_nif_path}: Unsupported collision geometry format in ConvextTransformShape: {type(node.shape)}")
+
+    def collisions_process_bhkConvexListShape(self, node, translation, rotation, scale, layer):
+        material = node.material
+        for shape in node.subshapes:
+            if isinstance(shape, pyffi.formats.nif.NifFormat.bhkCapsuleShape):
+                self.collisions_process_capsule_object(shape, translation, rotation, scale, material, layer, None)
+            elif isinstance(shape, pyffi.formats.nif.NifFormat.bhkBoxShape):
+                self.collisions_process_box_object(shape, translation, rotation, scale, material, layer, None)
+            else:
+                logging.warning(f"{self.current_nif_path}: Unsupported collision geometry format in ListShape: {type(shape)}")
             
 
     def process_collision_object(self, node, translation, rotation, scale):
@@ -750,6 +760,10 @@ class NifProcessor:
                 for obj in node.collision_object.body.shape.sub_shapes:
                     if isinstance(obj, pyffi.formats.nif.NifFormat.bhkConvexTransformShape):
                         self.collisions_process_bhkConvexTransformShape(obj, m_translation, m_rotation, f_scale, layer)
+                    elif isinstance(obj, pyffi.formats.nif.NifFormat.bhkListShape):
+                        self.collisions_process_bhkConvexListShape(obj, m_translation, m_rotation, f_scale, layer)
+                    elif isinstance(obj, pyffi.formats.nif.NifFormat.bhkCapsuleShape):
+                        self.collisions_process_capsule_object(obj, m_translation, m_rotation, f_scale, None, layer, None)
                     else:
                         logging.warning(f"{self.current_nif_path}: Unsupported collision node format in ListShape: {type(obj)}")
             
