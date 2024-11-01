@@ -504,7 +504,18 @@ class NifProcessor:
             csv_file = csv.DictReader(csvfile)
             for row in csv_file:
                 name = row['name']
-                self.atlas_data[name.lower()] = row
+                #self.atlas_data[name.lower()] = row
+                processed_row = {key: self._convert_value(value) for key, value in row.items()}
+                self.atlas_data[name.lower()] = processed_row
+
+    def _convert_value(self, value):
+        try:
+            if '.' in value:
+                return float(value)
+            else:
+                return int(value)
+        except ValueError:
+            return value
 
     def ReturnAtlasData(self, shape):
         tex_path = None
