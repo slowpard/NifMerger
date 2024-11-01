@@ -581,6 +581,22 @@ class NifProcessor:
         obj.body.shape = pyffi.formats.nif.NifFormat.bhkConvexVerticesShape()
         obj.body.shape.material = material
         return obj
+    
+    def create_capsule_lizardbox_object(self, material, layer):
+        self.master_nif.roots[0].add_child(pyffi.formats.nif.NifFormat.NiNode())
+        self.master_nif.roots[0].children[-1].collision_object = pyffi.formats.nif.NifFormat.bhkCollisionObject()
+        obj = self.master_nif.roots[0].children[-1].collision_object
+        obj.target = self.master_nif.roots[0].children[-1]
+        obj.body = pyffi.formats.nif.NifFormat.bhkRigidBodyT()
+        obj.body.collision_response = 1 #RESPONSE_SIMPLE_CONTACT
+        obj.body.motion_system = 7 #MO_SYS_FIXED
+        obj.body.deactivator_type = 1 #DEACTIVATOR_NEVER
+        obj.body.solver_deactivation = 1 #SOLVER_DEACTIVATION_OFF
+        obj.body.quality_type = 1 #MO_QUAL_FIXED
+        obj.body.havok_col_filter.layer = layer
+        obj.body.shape = pyffi.formats.nif.NifFormat.bhkCapsuleShape()
+        obj.body.shape.material = material
+        return obj
 
     def box_shape_extractor(self, shape):
         x = shape.dimensions.x  
@@ -601,6 +617,37 @@ class NifProcessor:
                             [[4, 0, 3], [1, 0, 0, 1]],
                             [[4, 7, 6], [0, 0, -1, 1]],
                             [[6, 5, 4], [0, 0, -1, 1]]]}
+    
+    def collisions_process_capsule_object(self, node, translation, rotation, scale, material, layer, transform_matrix):
+        #capsules are just copied
+        if transform_matrix:
+            pass
+            #not implemented yet
+            #used only in lists, so not a priority
+
+        if not material:
+            material = node.material
+        target_collision = self.create_capsule_lizardbox_object(material, layer)
+        capsule_shape = target_collision.body.shape
+
+        
+        capsule_shape.radius = node.radius * scale 
+        capsule_shape.radius_1 = node.radius_1 * scale
+        capsule_shape.radius_2 = node.radius_2 * scale
+        temp_vector = np.matmul(scale * np.array([node.first_point.x, node.first_point.y, node.first_point.z]), rotation)
+        adj_vector = pyffi.formats.nif.NifFormat.Vector3()
+        adj_vector.x = temp_vector[0] + translation[0] / self.HAVOK_SCALE
+        adj_vector.y = temp_vector[1] + translation[1] / self.HAVOK_SCALE
+        adj_vector.z = temp_vector[2] + translation[2] / self.HAVOK_SCALE
+        capsule_shape.first_point = adj_vector
+
+        temp_vector = np.matmul(scale * np.array([node.second_point.x, node.second_point.y, node.second_point.z]), rotation)
+        adj_vector = pyffi.formats.nif.NifFormat.Vector3()
+        adj_vector.x = temp_vector[0] + translation[0] / self.HAVOK_SCALE
+        adj_vector.y = temp_vector[1] + translation[1] / self.HAVOK_SCALE
+        adj_vector.z = temp_vector[2] + translation[2] / self.HAVOK_SCALE
+        capsule_shape.second_point = adj_vector
+
 
     def collisions_process_box_object(self, node, translation, rotation, scale, material, layer, transform_matrix):
         #node is NiNode.collision_object.body.shape.shape
@@ -708,6 +755,10 @@ class NifProcessor:
             
             elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkBoxShape):
                 self.collisions_process_box_object(node.collision_object.body.shape, m_translation, m_rotation, f_scale, None, layer, None)
+
+            elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkCapsuleShape):
+                self.collisions_process_capsule_object(node.collision_object.body.shape, m_translation, m_rotation, f_scale, None, layer, None)
+                
 
             elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkConvexVerticesShape):
                 target_collision = None 
