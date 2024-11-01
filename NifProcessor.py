@@ -750,6 +750,8 @@ class NifProcessor:
         transform_matrix = node.transform.as_list()
         if isinstance(node.shape, pyffi.formats.nif.NifFormat.bhkBoxShape):
             self.collisions_process_box_object(node.shape, translation, rotation, scale, material, layer, transform_matrix)
+        elif isinstance(node.shape, pyffi.formats.nif.NifFormat.bhkCapsuleShape):
+            self.collisions_process_capsule_object(node.shape, translation, rotation, scale, material, layer, transform_matrix)
         else:
             logging.warning(f"{self.current_nif_path}: Unsupported collision geometry format in ConvextTransformShape: {type(node.shape)}")
 
