@@ -609,13 +609,18 @@ class NifProcessor:
         target_collision = None
 
         shape_data = self.box_shape_extractor(node)
-        for vertice in shape_data['vertices']:
-            vertice[0] = np.matmul(np.array(transform_matrix), vertice[0])
-            
-        for triangle in shape_data['triangles']:
-            triangle[1] = np.matmul(np.array(transform_matrix), triangle[1])
-            triangle[1] = triangle[1] / np.linalg.norm(triangle[1][:3])
-            
+
+        if transform_matrix:
+
+            for vertice in shape_data['vertices']:
+                vertice[0] = np.matmul(np.array(transform_matrix), vertice[0])
+                
+            for triangle in shape_data['triangles']:
+                triangle[1] = np.matmul(np.array(transform_matrix), triangle[1])
+                triangle[1] = triangle[1] / np.linalg.norm(triangle[1][:3])
+        
+        if material is None:
+            material = node.material
 
         for n in self.master_nif.roots[0].children:
             if isinstance(n, pyffi.formats.nif.NifFormat.NiNode):
@@ -626,7 +631,7 @@ class NifProcessor:
                                 if n.collision_object.body.shape.shape.sub_shapes[0].material.material == material.material:
                                     if n.collision_object.body.shape.shape.data.num_vertices < 65000:
                                         target_collision = n.collision_object
-
+        
         if not target_collision:
             logging.debug(f"creating new collision object with material {material.material} and layer {layer}")
             target_collision = self.create_lizardbox_object(material, layer=layer)
@@ -700,6 +705,9 @@ class NifProcessor:
                         self.collisions_process_bhkConvexTransformShape(obj, m_translation, m_rotation, f_scale, layer)
                     else:
                         logging.warning(f"{self.current_nif_path}: Unsupported collision node format in ListShape: {type(obj)}")
+            
+            elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkBoxShape):
+                self.collisions_process_box_object(node.collision_object.body.shape, m_translation, m_rotation, f_scale, None, layer, None)
 
             elif isinstance(node.collision_object.body.shape, pyffi.formats.nif.NifFormat.bhkConvexVerticesShape):
                 target_collision = None 
