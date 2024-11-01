@@ -620,28 +620,60 @@ class NifProcessor:
     
     def collisions_process_capsule_object(self, node, translation, rotation, scale, material, layer, transform_matrix):
         #capsules are just copied
-        if transform_matrix:
-            pass
-            #not implemented yet
-            #used only in lists, so not a priority
+
+
 
         if not material:
             material = node.material
+
         target_collision = self.create_capsule_lizardbox_object(material, layer)
         capsule_shape = target_collision.body.shape
 
+
+        if transform_matrix:
+            scale_matrix = np.array(transform_matrix)[:3,:3]
+            scale_x = np.linalg.norm(scale_matrix[:, 0])
+            scale_y = np.linalg.norm(scale_matrix[:, 1])
+            scale_z = np.linalg.norm(scale_matrix[:, 2])
+            if abs(scale_x - scale_y) > 0.01 or abs(scale_x - scale_z) > 0.01 or abs(scale_y - scale_z) > 0.01:
+                logging.warning(f'{self.current_nif_path}: Non-uniform scaling detected in capsule collisionbox, only uniform scaling is supported')
+            
+            radius_mult = round((scale_x + scale_y + scale_z)/3, 2)
+
+            print(radius_mult)
+            capsule_shape.radius *= radius_mult
+            capsule_shape.radius_1 *= radius_mult
+            capsule_shape.radius_2 *= radius_mult
         
         capsule_shape.radius = node.radius * scale 
         capsule_shape.radius_1 = node.radius_1 * scale
         capsule_shape.radius_2 = node.radius_2 * scale
-        temp_vector = np.matmul(scale * np.array([node.first_point.x, node.first_point.y, node.first_point.z]), rotation)
+
+
+
+
+        v1 = np.array([node.first_point.x, node.first_point.y, node.first_point.z])
+        if transform_matrix:
+            vertice_vector4 = np.array([node.first_point.x, node.first_point.y, node.first_point.z, 1])
+            vertice_vector4 = np.matmul(np.array(transform_matrix), vertice_vector4)
+        v1p = vertice_vector4[:3]
+
+        temp_vector = np.matmul(scale * v1p, rotation)
         adj_vector = pyffi.formats.nif.NifFormat.Vector3()
         adj_vector.x = temp_vector[0] + translation[0] / self.HAVOK_SCALE
         adj_vector.y = temp_vector[1] + translation[1] / self.HAVOK_SCALE
         adj_vector.z = temp_vector[2] + translation[2] / self.HAVOK_SCALE
         capsule_shape.first_point = adj_vector
 
-        temp_vector = np.matmul(scale * np.array([node.second_point.x, node.second_point.y, node.second_point.z]), rotation)
+
+        v2 = np.array([node.second_point.x, node.second_point.y, node.second_point.z])
+        if transform_matrix:
+            vertice_vector4 = np.array([node.second_point.x, node.second_point.y, node.second_point.z, 1])
+            vertice_vector4 = np.matmul(np.array(transform_matrix), vertice_vector4)
+        v2p = vertice_vector4[:3]
+
+
+        temp_vector = np.matmul(scale * v2p, rotation)
         adj_vector = pyffi.formats.nif.NifFormat.Vector3()
         adj_vector.x = temp_vector[0] + translation[0] / self.HAVOK_SCALE
         adj_vector.y = temp_vector[1] + translation[1] / self.HAVOK_SCALE
@@ -649,10 +681,10 @@ class NifProcessor:
         capsule_shape.second_point = adj_vector
 
 
+
     def collisions_process_box_object(self, node, translation, rotation, scale, material, layer, transform_matrix):
         #node is NiNode.collision_object.body.shape.shape
         #lizardboxbox
-
         target_collision = None
 
         shape_data = self.box_shape_extractor(node)
