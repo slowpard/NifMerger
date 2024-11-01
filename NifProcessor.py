@@ -1223,7 +1223,7 @@ class NifProcessor:
                         trishape_t.properties[-1].base_texture.source.file_name = texture_path
                     if isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
                         if k.base_texture.source:
-                            self.texture_list.append(trishape_t.properties[-1].base_texture.source.file_name)
+                            self.texture_list.append([trishape_t.properties[-1].base_texture.source.file_name, 0, 0, 0, 0])
 
 
                 trishape_t.data = pyffi.formats.nif.NifFormat.NiTriShapeData()
@@ -1401,6 +1401,31 @@ class NifProcessor:
     
         return center, math.sqrt(radius)
     
+    def update_texture_list_uv_boundaries(self):
+
+        self.texture_list = []
+        for shape in self.master_nif.roots[0].children:
+            if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
+                for property in shape.properties:
+                    if isinstance(property, pyffi.formats.nif.NifFormat.NiTexturingProperty):
+                        texture_path = str(property.base_texture.source.file_name.decode('windows-1252'))
+                        u_min = 1
+                        u_max = 0
+                        v_min = 1
+                        v_max = 0
+
+                        for uv in shape.data.uv_sets[0]:
+                            if uv.v < v_min:
+                                v_min = uv.v
+                            if uv.v > v_max:
+                                v_max = uv.v
+                            if uv.u < u_min:
+                                u_min = uv.u
+                            if uv.u > u_max:
+                                u_max = uv.u
+                        
+                        self.texture_list.append([texture_path, u_min, u_max, v_min, v_max])
+    
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
         m_rotation = self.MatrixfromEulerAngles_zyx(rotation[0], rotation[1], rotation[2])
@@ -1500,7 +1525,7 @@ class NifProcessor:
 
     
     def SaveNif(self, nif_path):
-
+        
         logging.debug(f'Saving {nif_path}')
         self.update_nif_radius_and_center()
         directory = os.path.dirname(nif_path)
