@@ -343,6 +343,11 @@ class NifProcessor:
     #if the deviation is higher, the shape is not to the atlassed shape
     ATLAS_UV_COORDINATES_LIMIT = 0.1
 
+
+    SLOW_BOUNDING_BOX = False
+    #if false, fast calc of bounding box is used
+    #if true, slow calc is (Ritter), but it's more accurate
+
     def __init__(self):
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
         self.anim_list = []
@@ -1371,7 +1376,12 @@ class NifProcessor:
                     vertice_list[i] = [vertice.x, vertice.y, vertice.z]
                 #average_point = np.mean(vertice_list, axis=0)
                 #distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
-                average_point, distance = self.simple_bounding_box(vertice_list)
+
+                if self.SLOW_BOUNDING_BOX:
+                    average_point, distance = self.ritter_bounding_sphere(vertice_list)
+                else:
+                    average_point, distance = self.simple_bounding_box(vertice_list)
+
                 shape.data.center.x = average_point[0]
                 shape.data.center.y = average_point[1]
                 shape.data.center.z = average_point[2]
@@ -1389,9 +1399,14 @@ class NifProcessor:
         max_z = np.max(points[:, 2])
 
         center = np.array([(min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2])
-        radius = np.max([max_x - min_x, max_y - min_y, max_z - min_z]) / 2
+         
+        #radius = np.max([max_x - min_x, max_y - min_y, max_z - min_z]) / 2
+
+        radius_sq = np.sum((points - center) ** 2, axis=1)
+        radius = np.sqrt(np.max(radius_sq))
 
         return center, radius
+    
 
     def ritter_bounding_sphere(self, points):
         
@@ -1411,13 +1426,13 @@ class NifProcessor:
         #now expand the sphere
         for p in points:
             dist_to_center = np.sum((p - center) ** 2)
-            if dist_to_center > radius:
+            if dist_to_center > radius_sq:
                 #if a point is outside the sphere, move/expand the sphere to include it
-                new_radius = (radius + dist_to_center) / 2
-                center += (p - center) * ((dist_to_center - radius) / (2 * dist_to_center))
-                radius = new_radius
+                new_radius = (math.sqrt(radius_sq) + math.sqrt(dist_to_center)) / 2
+                center += (p - center) * ((dist_to_center - radius_sq) / (2 * dist_to_center))
+                radius_sq = new_radius ** 2
     
-        return center, math.sqrt(radius)
+        return center, math.sqrt(radius_sq)
     
     def update_texture_list_uv_boundaries(self):
 
