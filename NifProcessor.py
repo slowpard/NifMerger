@@ -324,6 +324,8 @@ class NifProcessor:
     IGNORE_DIFFUSE_COLOR = True
     IGNORE_SPECULAR_COLOR = True
 
+    IGNORE_GLOSSINESS = False
+
     #AWLS
     AWLS_ANIM_GROUP_LIST = ['AttackLeft', 'AttackLeftPower', 'Death', 'CastSelf', 'Stagger', 'Unequip', 'Recoil']
 
@@ -1175,7 +1177,12 @@ class NifProcessor:
                             texture_check = (texture_path.lower() == str(k.base_texture.source.file_name.decode('windows-1252')).lower())
                             apply_mode_check = (texture_apply_mode == k.apply_mode)
                         elif isinstance(k, pyffi.formats.nif.NifFormat.NiMaterialProperty):
-                            material_g_check = (material_glossiness == k.glossiness)
+
+                            if self.IGNORE_GLOSSINESS:
+                                material_g_check = True
+                            else:
+                                material_g_check = (material_glossiness == k.glossiness)
+
                             material_a_check = (material_alpha == k.alpha)
 
                             if self.IGNORE_AMBIENT_COLOR:
