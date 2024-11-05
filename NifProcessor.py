@@ -1398,10 +1398,10 @@ class NifProcessor:
         if len(center_list) == 0:
             pass
         elif len(center_list) == 1:
-            self.bounding_radius = distance_list[0]
-        else:
-            _, self.bounding_radius = self.simple_bounding_box(np.array(center_list), np.array(distance_list))
+            self.bounding_radius = max(np.linalg.norm(center) + distance for center, distance in zip(center_list, distance_list))
 
+
+    def simple_bounding_box(self, points, radius = None):
         
         min_x = np.min(points[:, 0])
         max_x = np.max(points[:, 0])
