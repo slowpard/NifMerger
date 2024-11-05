@@ -1530,6 +1530,11 @@ class NifProcessor:
             self.master_nif.roots[0].extra_data_list[0].integer_data = 2
         
             
+    def PreSaveProcessing(self):
+        self.update_nif_radius_and_center()
+        self.CleanAnimationController()
+        self.GenerateMoppObjects()
+        self.UpdateTangentSpaces()
         
         
     def ProcessNif(self, nif_path, translation, rotation, scale):
