@@ -358,6 +358,7 @@ class NifProcessor:
         self.current_nif_path = ''
         self.triangle_count = 0
         self.texture_list = []
+        self.bounding_radius = 0
 
     def MatrixfromEulerAngles(self, x, y, z):
         #xyz
@@ -1368,7 +1369,10 @@ class NifProcessor:
 
 
     def update_nif_radius_and_center(self):
-                
+        
+        center_list = []
+        distance_list = []
+
         for shape in self.master_nif.roots[0].children:
             if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
                 vertice_list = np.zeros((len(shape.data.vertices), 3)) 
@@ -1387,9 +1391,17 @@ class NifProcessor:
                 shape.data.center.z = average_point[2]
                 shape.data.radius = distance
                 
+                center_list.append(average_point)
+                distance_list.append(distance)
                 vertice_list = None
 
-    def simple_bounding_box(self, points):
+        if len(center_list) == 0:
+            pass
+        elif len(center_list) == 1:
+            self.bounding_radius = distance_list[0]
+        else:
+            _, self.bounding_radius = self.simple_bounding_box(np.array(center_list), np.array(distance_list))
+
         
         min_x = np.min(points[:, 0])
         max_x = np.max(points[:, 0])
@@ -1590,7 +1602,8 @@ class NifProcessor:
         self.triangle_count = 0
 
         self.texture_list = []
-
+        self.bounding_radius = 0
+        
     def MiddleOfCellCalc(self, cell_x, cell_y):
         
         #returns coordinates of the cell center, useful for large cell-size merges
