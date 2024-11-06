@@ -1473,6 +1473,8 @@ class NifProcessor:
                                 u_max = uv.u
                         
                         self.texture_list.append([texture_path, u_min, u_max, v_min, v_max])
+
+    
     
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
@@ -1544,7 +1546,6 @@ class NifProcessor:
             self.master_nif.roots[0].controller = None
             self.master_nif.roots[0].extra_data_list[0].integer_data = 2
         
-            
     def PreSaveProcessing(self):
         self.update_nif_radius_and_center()
         self.CleanAnimationController()
@@ -1606,7 +1607,6 @@ class NifProcessor:
 
         self.texture_list = []
         self.bounding_radius = 0
-        
     def MiddleOfCellCalc(self, cell_x, cell_y):
         
         #returns coordinates of the cell center, useful for large cell-size merges
@@ -1659,9 +1659,7 @@ class NifProcessor:
             else:
                 logging.warning(f'Skipping {obj[7]} due to low Z value')
 
-        self.GenerateMoppObjects()
-        self.UpdateTangentSpaces()
-        self.CleanAnimationController()
+        self.PreSaveProcessing()
         self.SaveNif(nif_path)
 
 
@@ -1676,9 +1674,7 @@ class NifProcessor:
             else:
                 logging.warning(f'Skipping {obj[0]} due to low Z value')
 
-        self.GenerateMoppObjects()
-        self.UpdateTangentSpaces()
-        self.CleanAnimationController()
+        self.PreSaveProcessing()
         self.SaveNif(nif_path)
                     
 
@@ -1689,9 +1685,7 @@ class NifProcessor:
         self.CleanTemplates()
         self.ReadAtlasData()
         self.ProcessNif(input_path, [0, 0, 0], [0, 0, 0], 1.0)
-        self.GenerateMoppObjects()
-        self.UpdateTangentSpaces()
-        self.CleanAnimationController()
+        self.PreSaveProcessing()
         self.SaveNif(output_path)
 
     def ProcessAllMeshesInAFolder(self, folder, output_folder):
@@ -1705,8 +1699,6 @@ class NifProcessor:
                     self.CleanTemplates()
                     file_name = os.path.join(root, file)
                     self.ProcessNif(file_name, [0, 0, 0], [0, 0, 0], 1.0)
-                    self.GenerateMoppObjects()
-                    self.UpdateTangentSpaces()
-                    self.CleanAnimationController()
+                    self.PreSaveProcessing()
                     self.SaveNif(os.path.join(output_folder, os.path.relpath(file_name, folder)))
 
