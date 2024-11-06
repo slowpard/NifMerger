@@ -1705,3 +1705,40 @@ class NifProcessor:
                     self.PreSaveProcessing()
                     self.SaveNif(os.path.join(output_folder, os.path.relpath(file_name, folder)))
 
+    def ProcessCsvList(self, csv_path, in_folder, output_folder, suffix = '.nif'):
+
+        '''
+        [0] mesh_path,
+        [1-3] x,y,z,
+        [4-6] rot_x,rot_y,rot_z,
+        [7] scale,
+        [8-10] offset_x,offset_y,offset_z,
+        [11-12] formid,base_formid,
+        [13] output_mesh_path
+        '''
+
+        self.ReadAtlasData()
+        if not os.path.exists(csv_path):
+            logging.error(f'CSV is not found at {csv}')
+            return
+        
+        csv_data = []
+        output_meshes = []
+        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            csv_file = csv.DictReader(csvfile)
+            for row in csv_file:
+                processed_row = {key: self._convert_value(value) for key, value in row.items()}
+                if not processed_row['output_mesh_path'] in output_meshes:
+                    output_meshes.append(processed_row['output_mesh_path'])
+                csv_data.append(processed_row)
+                
+        for t_mesh in output_meshes:
+            self.CleanTemplates()
+            for mesh in csv_data:
+                if mesh['output_mesh_path'] == t_mesh:          
+                    self.ProcessNif(os.path.join(in_folder, mesh['mesh_path'].lower().replace('.nif', suffix)), 
+                                                 [mesh['x'] - mesh['offset_x'], mesh['y'] - mesh['offset_y'], mesh['z'] - mesh['offset_z']], 
+                                                 [mesh['rot_x'], mesh['rot_y'], mesh['rot_z']], mesh['scale'])
+            self.PreSaveProcessing()
+            self.SaveNif(os.path.join(output_folder, t_mesh + suffix)) 
+
