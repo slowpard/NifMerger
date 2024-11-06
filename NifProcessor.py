@@ -508,6 +508,9 @@ class NifProcessor:
 
     def ReadAtlasData(self):
         self.atlas_data = {}
+        if not os.path.exists(self.ATLAS_CSV_PATH):
+            logging.warning(f'Atlas data file not found at {self.ATLAS_CSV_PATH}')
+            return
         with open(self.ATLAS_CSV_PATH, newline='', encoding='utf-8') as csvfile:
             csv_file = csv.DictReader(csvfile)
             for row in csv_file:
