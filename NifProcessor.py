@@ -1406,6 +1406,9 @@ class NifProcessor:
 
     def simple_bounding_box(self, points, radius = None):
         
+        if not radius:
+            radius = np.zeros(len(points))
+
         min_x = np.min(points[:, 0])
         max_x = np.max(points[:, 0])
         min_y = np.min(points[:, 1])
@@ -1417,8 +1420,8 @@ class NifProcessor:
          
         #radius = np.max([max_x - min_x, max_y - min_y, max_z - min_z]) / 2
 
-        radius_sq = np.sum((points - center) ** 2, axis=1)
-        radius = np.sqrt(np.max(radius_sq))
+        radius_sq = np.sqrt(np.sum((points - center) ** 2, axis=1)) + radius
+        radius = np.max(radius_sq)
 
         return center, radius
     
