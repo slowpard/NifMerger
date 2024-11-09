@@ -1254,6 +1254,8 @@ class NifProcessor:
 
 
                 trishape_t.data = pyffi.formats.nif.NifFormat.NiTriShapeData()
+                
+                trishape_t.data.consistency_flags = 16384 #CT_STATIC   
                 trishape_t.data.has_vertices = True
                 trishape_t.data.has_normals = True
                 trishape_t.data.has_vertex_colors = True
