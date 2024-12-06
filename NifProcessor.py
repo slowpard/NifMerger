@@ -1514,6 +1514,15 @@ class NifProcessor:
                         if True: #with HiddenPrints():
                             n.collision_object.body.shape.update_mopp_welding()
 
+    def CalculateVertCount(self):
+
+        vert_count = 0
+        for n in self.master_nif.roots[0].children:
+            if isinstance(n, pyffi.formats.nif.NifFormat.NiTriShape):
+                vert_count += len(n.data.vertices)
+        return vert_count
+        
+
     def UpdateTangentSpaces(self):
         if self.SKIP_TANGENT_SPACE_GENERATION:
             return
