@@ -1686,17 +1686,25 @@ class NifProcessor:
                 if block[6] == 0.0: block[6] = 1.0
                 blocks.append(block)
         
+
         self.CleanTemplates()
         self.ReadAtlasData()
 
         for obj in blocks:
+            if not obj[7] in mesh_triangle:
+                mesh_triangle[obj[7]] = 0
+            trg = self.triangle_count
             if obj[2] > -25000 or (not self.IGNORE_LOW_Z_FOR_MERGING):
                 self.ProcessNif(os.path.join(mesh_repo, obj[7]), [obj[0] - x_offset, obj[1] - y_offset, obj[2] - z_offset], [obj[3], obj[4], obj[5]], obj[6])
             else:
                 logging.warning(f'Skipping {obj[7]} due to low Z value')
+            mesh_triangle[obj[7]] += self.triangle_count - trg
 
         self.PreSaveProcessing()
         self.SaveNif(nif_path)
+
+        for i in mesh_triangle:
+            print(f'{i}: {mesh_triangle[i]}')
 
 
     def GenerateCombinedNifFromArray(self, mesh_data, x_offset, y_offset, z_offset, nif_path):
@@ -1764,7 +1772,7 @@ class NifProcessor:
                 if not processed_row['output_mesh_path'] in output_meshes:
                     output_meshes.append(processed_row['output_mesh_path'])
                 csv_data.append(processed_row)
-                
+
         for t_mesh in output_meshes:
             self.CleanTemplates()
             for mesh in csv_data:
