@@ -1545,20 +1545,20 @@ class NifProcessor:
         #AWLS cleanup
         
         useful_sequences = []
+        if self.master_nif.roots[0].controller:
+            for s in self.master_nif.roots[0].controller.controller_sequences:
+                if s.num_controlled_blocks > 0:
+                    s.append(useful_sequences)
+            
+            if len(useful_sequences) > 0:
+                self.master_nif.roots[0].controller.num_controller_sequences = len(useful_sequences)
+                self.master_nif.roots[0].controller.controller_sequences.update_size()
 
-        for s in self.master_nif.roots[0].controller.controller_sequences:
-            if s.num_controlled_blocks > 0:
-                s.append(useful_sequences)
-        
-        if len(useful_sequences) > 0:
-            self.master_nif.roots[0].controller.num_controller_sequences = len(useful_sequences)
-            self.master_nif.roots[0].controller.controller_sequences.update_size()
-
-            for i, s in enumerate(useful_sequences):
-                self.master_nif.roots[0].controller.controller_sequences[i] = s
-        else:
-            self.master_nif.roots[0].controller = None
-            self.master_nif.roots[0].extra_data_list[0].integer_data = 2
+                for i, s in enumerate(useful_sequences):
+                    self.master_nif.roots[0].controller.controller_sequences[i] = s
+            else:
+                self.master_nif.roots[0].controller = None
+                self.master_nif.roots[0].extra_data_list[0].integer_data = 2
         
     def PreSaveProcessing(self):
         self.update_nif_radius_and_center()
