@@ -1497,7 +1497,6 @@ class NifProcessor:
                         
                         self.texture_list.append([texture_path, u_min, u_max, v_min, v_max])
 
-    
     def remove_empty_shapes(self):
         for shape in self.master_nif.roots[0].children:
             if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
@@ -1621,7 +1620,6 @@ class NifProcessor:
     def SaveNif(self, nif_path):
         
         logging.debug(f'Saving {nif_path}')
-        self.update_nif_radius_and_center()
         directory = os.path.dirname(nif_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -1688,7 +1686,9 @@ class NifProcessor:
                         value = lines[j].strip()
                     block.append(value)
                 if block[6] == 0.0: block[6] = 1.0
+
                 blocks.append(block)
+        mesh_triangle = {}
         
 
         self.CleanTemplates()
