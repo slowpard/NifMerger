@@ -1405,6 +1405,20 @@ class NifProcessor:
         elif len(center_list) == 1:
             self.bounding_radius = max(np.linalg.norm(center) + distance for center, distance in zip(center_list, distance_list))
 
+    def clean_white_vertexcolors(self):
+
+        for shape in self.master_nif.roots[0].children:
+            if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
+                if shape.data.has_vertex_colors:
+                    hasVertexColors = False
+                    for vertex in shape.data.vertex_colors:
+                        if vertex.r < 0.99999 or vertex.g < 0.99999 or vertex.b < 0.99999:
+                            hasVertexColors = True
+                            break
+                    
+                    if not hasVertexColors:
+                        shape.data.has_vertex_colors = False
+                        shape.data.vertex_colors.update_size()
 
     def simple_bounding_box(self, points, radius = None):
         
@@ -1562,6 +1576,7 @@ class NifProcessor:
         
     def PreSaveProcessing(self):
         self.update_nif_radius_and_center()
+        self.clean_white_vertexcolors()
         self.CleanAnimationController()
         self.GenerateMoppObjects()
         self.UpdateTangentSpaces()
