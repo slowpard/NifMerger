@@ -1380,12 +1380,16 @@ class NifProcessor:
 
         for shape in self.master_nif.roots[0].children:
             if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
+                if len(shape.data.vertices) == 0:
+                    shape.data.radius = 0
+                    continue
+
                 vertice_list = np.zeros((len(shape.data.vertices), 3)) 
                 for i, vertice in enumerate(shape.data.vertices):
                     vertice_list[i] = [vertice.x, vertice.y, vertice.z]
                 #average_point = np.mean(vertice_list, axis=0)
                 #distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
-
+                
                 if self.SLOW_BOUNDING_BOX:
                     average_point, distance = self.ritter_bounding_sphere(vertice_list)
                 else:
