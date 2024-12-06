@@ -1494,6 +1494,12 @@ class NifProcessor:
                         self.texture_list.append([texture_path, u_min, u_max, v_min, v_max])
 
     
+    def remove_empty_shapes(self):
+        for shape in self.master_nif.roots[0].children:
+            if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
+                if len(shape.data.vertices) == 0 or len(shape.data.triangles) == 0:
+                    self.master_nif.roots[0].remove_child(shape)
+                    shape = None
     
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
@@ -1577,6 +1583,7 @@ class NifProcessor:
     def PreSaveProcessing(self):
         self.update_nif_radius_and_center()
         self.clean_white_vertexcolors()
+        self.remove_empty_shapes()
         self.CleanAnimationController()
         self.GenerateMoppObjects()
         self.UpdateTangentSpaces()
