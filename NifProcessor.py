@@ -366,6 +366,11 @@ class NifProcessor:
     #if false, fast calc of bounding box is used
     #if true, slow calc is (Ritter), but it's more accurate
 
+    #caching nifs for faster processing
+    #+10% on pypy, should be much faster on cpython
+    #very high memory usage, so disabled by default
+    CACHE_NIFS = False
+
     def __init__(self):
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
         self.anim_list = []
@@ -377,6 +382,7 @@ class NifProcessor:
         self.triangle_count = 0
         self.texture_list = []
         self.bounding_radius = 0
+        self.cached_nifs = {}
 
     def MatrixfromEulerAngles(self, x, y, z):
         #xyz
@@ -1617,15 +1623,29 @@ class NifProcessor:
             self.shapes_merged = 0
             try:
                 try:
-                    stream = open(nif_path, 'rb')
-                    data = pyffi.formats.nif.NifFormat.Data()
-                    data.read(stream)
-                    self.process_nif_root(data, translation, rotation, scale)
-                    #print('Shapes merged: ', str(self.shapes_merged))
-                    self.merged_data.append([nif_path, self.shapes_merged])
-                    stream.close()
-                    data = None
-                    stream = None
+                    if self.CACHE_NIFS:
+                        if not nif_path in self.cached_nifs:
+                            stream = open(nif_path, 'rb')
+                            nif_data = pyffi.formats.nif.NifFormat.Data()
+                            nif_data.read(stream)
+                            stream.close()
+                            stream = None
+                            self.cached_nifs[nif_path] = nif_data
+                        if nif_path in self.cached_nifs:
+                            data = self.cached_nifs[nif_path]
+                            self.process_nif_root(data, translation, rotation, scale)
+                            self.merged_data.append([nif_path, self.shapes_merged])
+                            data = None
+                    else:
+                        stream = open(nif_path, 'rb')
+                        data = pyffi.formats.nif.NifFormat.Data()
+                        data.read(stream)
+                        self.process_nif_root(data, translation, rotation, scale)
+                        self.merged_data.append([nif_path, self.shapes_merged])
+                        stream.close()
+                        data = None
+                        stream = None
+                        
                 except FileNotFoundError:
                     logging.error(f'File not found: {nif_path}')
             except Exception as e:
