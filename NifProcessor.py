@@ -366,6 +366,9 @@ class NifProcessor:
     #if false, fast calc of bounding box is used
     #if true, slow calc is (Ritter), but it's more accurate
 
+    Z_CULLING_FLAG = True
+    Z_CULLING_LEVEL = -30000
+
     #caching nifs for faster processing
     #+10% on pypy, should be much faster on cpython
     #very high memory usage, so disabled by default
@@ -1304,28 +1307,83 @@ class NifProcessor:
                         k.b = 1.0
                         k.a = 1.0
 
+                vert_below_z = [False] * len(trishape.data.vertices)
+                if self.Z_CULLING_FLAG:
+                    vert_all_triangles_below_x = [True] * len(trishape.data.vertices)
+                else:
+                    vert_all_triangles_below_x = [False] * len(trishape.data.vertices)
+                vertices_transformed = []
 
-                  
                 for i, vertice in enumerate(trishape.data.vertices):
+                    adjusted_vector = np.matmul(f_scale * np.array([vertice.x, vertice.y, vertice.z]), m_rotation) + m_translation
+
+                    if self.Z_CULLING_FLAG:
+                        if adjusted_vector[2] < self.Z_CULLING_LEVEL:
+                            vert_below_z[i] = True
+                    vertices_transformed.append(adjusted_vector)
+
+                if isinstance(trishape, pyffi.formats.nif.NifFormat.NiTriShape):
+                    triangles =  [(t.v_1, t.v_2, t.v_3) for t in trishape.data.triangles]
+                else:
+                    triangles = []
+                    triangles = pyffi.utils.tristrip.triangulate(trishape.data.points)
+
+
+                triangles_data = []
+
+                for triangle in triangles:
+                    #triangle_ar = [triangle.v_1, triangle.v_2, triangle.v_3]
+                    if self.Z_CULLING_FLAG:
+                        if vert_below_z[triangle[0]] and vert_below_z[triangle[1]] and vert_below_z[triangle[2]]:
+                            continue
+                        else:
+                            vert_all_triangles_below_x[triangle[0]] = False
+                            vert_all_triangles_below_x[triangle[1]] = False
+                            vert_all_triangles_below_x[triangle[2]] = False
+                            triangles_data.append(triangle)
+
+                vert_remap = [-1] * len(trishape.data.vertices)
+                k = 0
+                for i, culled in enumerate(vert_all_triangles_below_x):
+                    if not culled:
+                        vert_remap[i] = k
+                        k += 1
+
+                for triangle in triangles_data:
+                    temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
+                    temp_triangle.v_1 = vert_remap[triangle[0]] + vertices_offset
+                    temp_triangle.v_2 = vert_remap[triangle[1]] + vertices_offset
+                    temp_triangle.v_3 = vert_remap[triangle[2]] + vertices_offset
+                    target_shape.data.triangles.append(temp_triangle)
+
+                for i, vertice in enumerate(vertices_transformed):
+                    if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
+                        continue
                     temp_vertice = pyffi.formats.nif.NifFormat.Vector3()
-                    adjusted_vector = np.matmul(f_scale * np.array([vertice.x, vertice.y, vertice.z]), m_rotation)
-                    temp_vertice.x = adjusted_vector[0] + m_translation[0]
-                    temp_vertice.y = adjusted_vector[1] + m_translation[1]
-                    temp_vertice.z = adjusted_vector[2] + m_translation[2]                          
+                    temp_vertice.x = vertice[0]
+                    temp_vertice.y = vertice[1]
+                    temp_vertice.z = vertice[2]                         
                     target_shape.data.vertices.append(temp_vertice)
 
 
-                for normal in trishape.data.normals:
+                for i, normal in enumerate(trishape.data.normals):
+                    if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
+                        continue
                     normal_vector = np.matmul(np.array([normal.x, normal.y, normal.z]), m_rotation)
                     temp_normal = pyffi.formats.nif.NifFormat.Vector3()
                     temp_normal.x = normal_vector[0]
                     temp_normal.y = normal_vector[1]
                     temp_normal.z = normal_vector[2]
                     target_shape.data.normals.append(temp_normal)
-                for vertex in trishape.data.vertex_colors:
+
+                for i, vertex in enumerate(trishape.data.vertex_colors):
+                    if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
+                        continue
                     target_shape.data.vertex_colors.append(vertex)
 
-                for uv in trishape.data.uv_sets[0]:
+                for i, uv in enumerate(trishape.data.uv_sets[0]):
+                    if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
+                        continue
                     if len(target_shape.data.uv_sets) == 0:
                         target_shape.data.num_uv_sets = 1
                         #target_shape.data.uv_sets.update_size()
@@ -1339,28 +1397,7 @@ class NifProcessor:
                     else:
                         target_shape.data.uv_sets[0].append(uv)
 
-                pre_triangle_count = len(target_shape.data.triangles)
-                if isinstance(trishape, pyffi.formats.nif.NifFormat.NiTriShape):
-                    for triangle in trishape.data.triangles:
-                        temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
-                        temp_triangle.v_1 = triangle.v_1 + vertices_offset
-                        temp_triangle.v_2 = triangle.v_2 + vertices_offset
-                        temp_triangle.v_3 = triangle.v_3 + vertices_offset
-                        target_shape.data.triangles.append(temp_triangle)
-                        #if str(trishape.name.decode('UTF-8')) == r'CheydinhalHouseMiddle04:15':
-                        #    print("Adding triangle ", temp_triangle.v_1, temp_triangle.v_2, temp_triangle.v_3)
-                        #    print("Offset:", vertices_offset)
-                        #    print(triangle)
 
-                elif isinstance(trishape, pyffi.formats.nif.NifFormat.NiTriStrips):
-                    triangles = []
-                    triangles = pyffi.utils.tristrip.triangulate(trishape.data.points)
-                    for triangle in triangles:
-                        temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
-                        temp_triangle.v_1 = triangle[0] + vertices_offset
-                        temp_triangle.v_2 = triangle[1] + vertices_offset
-                        temp_triangle.v_3 = triangle[2] + vertices_offset
-                        target_shape.data.triangles.append(temp_triangle)
                                     
                 target_shape.data.num_vertices = len(target_shape.data.vertices)
                 target_shape.data.num_triangles = len(target_shape.data.triangles) #+= trishape.data.num_triangles
