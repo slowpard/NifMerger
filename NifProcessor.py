@@ -1265,7 +1265,7 @@ class NifProcessor:
 
                 #self.material_list.loc[material_name] = [str(trishape.name.decode('UTF-8')), material_glossiness, material_alpha, str(texture_path)]
                 self.master_nif.roots[0].add_child(pyffi.formats.nif.NifFormat.NiTriShape())
-                trishape_t = self.master_nif.roots[0].children[-1]
+                trishape_t = self.master_nif.roots[0].children[-1]   
                 trishape_t.name = str(trishape.name.decode('windows-1252'))
                 trishape_t.flags = trishape.flags
 
@@ -1296,7 +1296,8 @@ class NifProcessor:
             if target_shape:
 
                 vertices_offset = target_shape.data.num_vertices
-
+                
+                pre_triangle_count = len(target_shape.data.triangles)
                 
                 if not trishape.data.has_vertex_colors:
                     trishape.data.has_vertex_colors = True
@@ -1559,12 +1560,15 @@ class NifProcessor:
                         self.texture_list.append([texture_path, u_min, u_max, v_min, v_max])
 
     def remove_empty_shapes(self):
+        children = []
+
         for shape in self.master_nif.roots[0].children:
             if isinstance(shape, pyffi.formats.nif.NifFormat.NiTriShape):
-                if len(shape.data.vertices) == 0 or len(shape.data.triangles) == 0:
-                    self.master_nif.roots[0].remove_child(shape)
-                    shape = None
-    
+                if len(shape.data.vertices) > 0 and len(shape.data.triangles) > 0:
+                    children.append(shape)
+            
+        self.master_nif.roots[0].set_children(children)
+
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
         m_rotation = self.MatrixfromEulerAngles_zyx(rotation[0], rotation[1], rotation[2])
