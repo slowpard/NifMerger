@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 time.clock = time.time #hack as time.clock is not available since python 3.8, open-source and backward compatibility... :cry:
+import pyffi.object_models
 import pyffi.spells.nif.modify
 import pyffi.formats.nif
 import math
@@ -12,6 +13,7 @@ from pyffi.utils.withref import ref
 import traceback
 import logging
 import csv
+import struct
 
 
 #pyffi has extremly abstract struct classes defined from xmls
@@ -60,6 +62,19 @@ if True:
         self._a_value_ = float_object4
         self._items = [float_object1, float_object2, float_object3, float_object4]
     pyffi.formats.nif.NifFormat.Color4.__init__ = Color4_fast_init
+
+
+def Float_fast_init(self, **kwargs):
+    self._value = 0.0
+
+pyffi.object_models.common.Float.__init__ = Float_fast_init
+
+float_struct = struct.Struct('<f')
+
+def Float_fast_read(self, stream, data):
+    self._value = float_struct.unpack(stream.read(4))[0]
+
+pyffi.object_models.common.Float.read = Float_fast_read
 
 if False: #slow on pypy, fast on cpython
     def TexCoord_fast_init(self, template = None, argument = None, parent = None):
@@ -252,6 +267,9 @@ if True:
         self.b.read(stream, data)
         self.a.read(stream, data)
     pyffi.formats.nif.NifFormat.Color4.read = Color4_fast_read
+
+
+
 
 if False:  
     def TexCoord_fast_read(self, stream, data):
