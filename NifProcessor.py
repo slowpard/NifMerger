@@ -76,6 +76,17 @@ def Float_fast_read(self, stream, data):
 
 pyffi.object_models.common.Float.read = Float_fast_read
 
+
+def Float_fast_write(self, stream, data):
+    try:
+        stream.write(float_struct.pack(self._value))
+    except OverflowError:
+        logger = logging.getLogger("pyffi.object_models")
+        logger.warn("float value overflow, writing NaN")
+        stream.write(struct.pack(data._byte_ord + 'I',
+                                     0x7fc00000))
+pyffi.object_models.common.Float.write = Float_fast_write
+
 if False: #slow on pypy, fast on cpython
     def TexCoord_fast_init(self, template = None, argument = None, parent = None):
         float_object1 = pyffi.object_models.common.Float()
