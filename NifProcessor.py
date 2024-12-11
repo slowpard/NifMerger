@@ -1417,6 +1417,9 @@ class NifProcessor:
                     temp_normal.z = 1
                     target_shape.data.normals.append(temp_normal)
 
+                if self.IGNORE_COLLISIONS:
+                    target_shape.flags = 0
+
                 if not self.IGNORE_AWLS:
                 
                     for shape, anim_block in self.anim_list:
@@ -1470,6 +1473,12 @@ class NifProcessor:
             pass
         elif len(center_list) == 1:
             self.bounding_radius = max(np.linalg.norm(center) + distance for center, distance in zip(center_list, distance_list))
+
+    def simple_nif_structure(self):
+        self.master_nif.roots[0].num_extra_data_list = 0
+        self.master_nif.roots[0].extra_data_list.update_size()
+        new_roots = [child for child in self.master_nif.roots[0].children]
+        self.master_nif.roots = new_roots
 
     def clean_white_vertexcolors(self):
 
@@ -1569,6 +1578,7 @@ class NifProcessor:
             
         self.master_nif.roots[0].set_children(children)
 
+
     def process_nif_root(self, data, translation=[0, 0, 0], rotation=[0, 0, 0], scale=1.0):
         m_translation = np.array(translation) 
         m_rotation = self.MatrixfromEulerAngles_zyx(rotation[0], rotation[1], rotation[2])
@@ -1602,6 +1612,8 @@ class NifProcessor:
                         if True: #with HiddenPrints():
                             n.collision_object.body.shape.update_mopp_welding()
 
+
+    
     def CalculateVertCount(self):
 
         vert_count = 0
@@ -1686,7 +1698,7 @@ class NifProcessor:
                         stream.close()
                         data = None
                         stream = None
-                        
+
                 except FileNotFoundError:
                     logging.error(f'File not found: {nif_path}')
             except Exception as e:
