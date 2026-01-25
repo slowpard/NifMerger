@@ -14,6 +14,7 @@ import traceback
 import logging
 import csv
 import struct
+import random
 
 
 #pyffi has extremly abstract struct classes defined from xmls
@@ -426,7 +427,7 @@ class NifProcessor:
         m[2][1] = cosX * sinY * sinZ + sinX * cosZ
         m[2][2] = cosX * cosY
 
-        return np.array(m)
+        return m
 
 
     def MatrixfromEulerAngles_zyx(self, x, y, z):
@@ -500,7 +501,7 @@ class NifProcessor:
 
 
     def Matrix33toArray(self, m):
-        return np.array([[m.m_11, m.m_12, m.m_13], [m.m_21, m.m_22, m.m_23], [m.m_31, m.m_32, m.m_33]])
+        return np.array(((m.m_11, m.m_12, m.m_13), (m.m_21, m.m_22, m.m_23), (m.m_31, m.m_32, m.m_33)))
 
 
     def QuaternionToMatrix(self, q):
@@ -677,6 +678,528 @@ class NifProcessor:
                             [[4, 0, 3], [1, 0, 0, 1]],
                             [[4, 7, 6], [0, 0, -1, 1]],
                             [[6, 5, 4], [0, 0, -1, 1]]]}
+    
+
+    
+    def norm3(self, x, y, z):
+        L = (x*x + y*y + z*z) ** 0.5
+        if L == 0.0:
+            return (0.0, 0.0, 1.0)
+        return (x / L, y / L, z / L)
+    
+
+    def make_tree_billboards_simple(self, width, height, n):
+
+        w = width / 2
+        h = height
+
+        vertices = []
+        triangles = []
+        uvs = []
+        normals = []
+
+        uv0 = (0.0, 0.0)
+        uv1 = (1.0, 0.0)
+        uv2 = (1.0, 1.0)
+        uv3 = (0.0, 1.0)
+        uv4 = (0.5, 0.0)
+        uv5 = (0.5, 1.0)
+
+        if n > 0:
+            for k in range(n):
+                theta = k * math.pi / n
+                dx = math.cos(theta)
+                dy = math.sin(theta)
+
+                xL = -w * dx
+                yL = -w * dy
+                xR = w * dx
+                yR = w * dy
+
+                for p in range(2):
+
+                    vertices.extend([
+                        (xL, yL, h),
+                        (0, 0, h),
+                        (0, 0, 0),
+                        (xL, yL, 0),
+                        (0, 0, h),
+                        (xR, yR, h),
+                        (xR, yR, 0),
+                        (0, 0, 0)
+                    ])
+
+                    if k % 2 == 0:
+                        uvs.extend(
+                            [uv0, uv4, uv5, uv3, uv4, uv1, uv2, uv5]
+                        )
+                    else:
+                        uvs.extend(
+                            [uv1, uv4, uv5, uv2, uv4, uv0, uv3, uv5]
+                        )
+
+                    normals.extend((
+                        self.norm3(xL, yL, h - h/2),
+                        self.norm3(xL, yL, h),    #axis
+                        self.norm3(xL, yL, -h/2),          #axis
+                        self.norm3(xL, yL, 0),
+                        self.norm3(xR, yR, h),    #axis
+                        self.norm3(xR, yR, h - h/2),
+                        self.norm3(xR, yR, 0),
+                        self.norm3(xR, yR, 0)           #axis
+                    ))
+
+                    
+                l = len(vertices) - 16
+
+                triangles.append([l + 0, l + 1, l + 2])
+                triangles.append([l + 2, l + 3, l + 0])
+                triangles.append([l + 4, l + 5, l + 6])
+                triangles.append([l + 6, l + 7, l + 4])
+                triangles.append([l + 10, l + 9, l + 8])
+                triangles.append([l + 8, l + 11, l + 10])
+                triangles.append([l + 14, l + 13, l + 12])
+                triangles.append([l + 12, l + 15, l + 14])
+
+        return {'vertices': vertices, 'triangles': triangles, 'uvs': uvs, 'normals': normals}
+
+    
+    def make_tree_billboards_simple(self, width, height, n):
+
+        w = width / 2
+        h = height
+
+        vertices = []
+        triangles = []
+        uvs = []
+        normals = []
+
+        uv0 = (0.0, 0.0)
+        uv1 = (1.0, 0.0)
+        uv2 = (1.0, 1.0)
+        uv3 = (0.0, 1.0)
+        uv4 = (1/3, 0.0)
+        uv5 = (1/3, 1.0)
+        uv6 = (2/3, 0.0)
+        uv7 = (2/3, 1.0)
+
+        if n > 0:
+            for k in range(n):
+                theta = k * math.pi / n
+                dx = math.cos(theta)
+                dy = math.sin(theta)
+
+                xL = -w * dx
+                yL = -w * dy
+                xR = w * dx
+                yR = w * dy
+
+                for p in range(2):
+
+                    vertices.extend([
+                        (xL, yL, h),
+                        (0, 0, h),
+                        (0, 0, 0),
+                        (xL, yL, 0),
+                        (0, 0, h),
+                        (xR, yR, h),
+                        (xR, yR, 0),
+                        (0, 0, 0)
+                    ])
+
+                    if k % 2 == 0:
+                        uvs.extend(
+                            [uv0, uv4, uv5, uv3, uv4, uv1, uv2, uv5]
+                        )
+                    else:
+                        uvs.extend(
+                            [uv1, uv4, uv5, uv2, uv4, uv0, uv3, uv5]
+                        )
+
+                    normals.extend((
+                        self.norm3(xL, yL, h - h/2),
+                        self.norm3(xL, yL, h),    #axis
+                        self.norm3(xL, yL, -h/2),          #axis
+                        self.norm3(xL, yL, 0),
+                        self.norm3(xR, yR, h),    #axis
+                        self.norm3(xR, yR, h - h/2),
+                        self.norm3(xR, yR, 0),
+                        self.norm3(xR, yR, 0)           #axis
+                    ))
+
+                    
+                l = len(vertices) - 16
+
+                triangles.append([l + 0, l + 1, l + 2])
+                triangles.append([l + 2, l + 3, l + 0])
+                triangles.append([l + 4, l + 5, l + 6])
+                triangles.append([l + 6, l + 7, l + 4])
+                triangles.append([l + 10, l + 9, l + 8])
+                triangles.append([l + 8, l + 11, l + 10])
+                triangles.append([l + 14, l + 13, l + 12])
+                triangles.append([l + 12, l + 15, l + 14])
+
+        return {'vertices': vertices, 'triangles': triangles, 'uvs': uvs, 'normals': normals}
+    
+    def make_tree_billboards_simple(self, width, height, n):
+
+        w = width / 2
+        h = height
+
+        vertices = []
+        triangles = []
+        uvs = []
+        normals = []
+
+        uv0 = [0.0, 0.0]
+        uv1 = [1.0, 0.0]
+        uv2 = [1.0, 1.0]
+        uv3 = [0.0, 1.0]
+
+        center = [0.0, 0.0, h / 2]
+
+        if n > 0:
+            for k in range(n):
+                theta = k * math.pi / n
+                dx = math.cos(theta)
+                dy = math.sin(theta)
+
+                xL = -w * dx
+                yL = -w * dy
+                xR = w * dx
+                yR = w * dy
+
+                for p in range(2):
+                    vertices.append([xL, yL, h])
+                    vertices.append([xR, yR, h])
+                    vertices.append([xR, yR, 0])
+                    vertices.append([xL, yL, 0])
+
+                    if k % 2 == 0:
+                        uvs.append(uv0)
+                        uvs.append(uv1)
+                        uvs.append(uv2)
+                        uvs.append(uv3)
+                    else:
+                        uvs.append(uv1)
+                        uvs.append(uv0)
+                        uvs.append(uv3)
+                        uvs.append(uv2)
+
+                    #plane_normal_a = np.array([((-1) ** 0) * (-dy), ((-1) ** 0) *dx, 0])
+                    #plane_normal_b = np.array([((-1) ** 1) * (-dy), ((-1) ** 1) *dx, 0])
+
+                    normal = np.array((xL, yL, 2/3*h))
+                    length = np.linalg.norm(normal)
+                    normal = normal / length
+                    normals.append(normal)
+
+
+                    normal =  np.array((xR, yR, 2/3*h))
+                    length = np.linalg.norm(normal)
+                    normal = normal / length
+                    normals.append(normal)
+
+                    normal =  np.array((xR, yR, -h/16))
+                    length = np.linalg.norm(normal)
+                    normal = normal / length
+                    normals.append(normal)                    
+
+                    normal =  np.array((xL, yL, -h/16))
+                    length = np.linalg.norm(normal)
+                    normal = normal / length
+                    normals.append(normal)                    
+
+
+
+
+
+                    #for e in range(2):
+                    #    x = ((-1) ** (e+1)) * dx + ((-1) ** p) * (-dy) 
+                    #    y = ((-1) ** (e+1)) * dy + ((-1) ** p) * (dx)
+                    #    z = 2.5
+                    #    length = (x * x + y * y + z * z) ** 0.5
+                    #    normals.append([x / length, y / length, z / length])
+
+                    #for e in range(2):
+                    #    x = ((-1) ** e) * dx + ((-1) ** p) * (-dy) 
+                    #    y = ((-1) ** e) * dy + ((-1) ** p) * (dx)
+                    #    z = 2.5
+                    #    length = (x * x + y * y + z * z) ** 0.5
+                    #    normals.append([x / length, y / length, z / length])
+
+
+
+                        #normals.append([((-1) ** p) * (-dy), ((-1) ** p) *dx, 0])
+
+                    #for e in range(4):
+                    #    normals.append([0, 0, 1])
+
+                l = len(vertices) - 1 - 7
+
+                triangles.append([l + 0, l + 1, l + 2])
+                triangles.append([l + 2, l + 3, l + 0])
+                triangles.append([l + 6, l + 5, l + 4])
+                triangles.append([l + 4, l + 7, l + 6])
+
+
+        return {'vertices': vertices, 'triangles': triangles, 'uvs': uvs, 'normals': normals}
+
+
+    def make_tree_billboards(self, width, height, n):
+
+        w = width / 2
+        h = height
+
+        vertices = []
+        triangles = []
+        uvs = []
+        normals = []
+
+
+        uvL0 = [0.0, 0.0]; uvL1 = [0.5, 0.0]; uvL2 = [0.5, 1.0]; uvL3 = [0.0, 1.0]
+        uvR0 = [0.5, 0.0]; uvR1 = [1.0, 0.0]; uvR2 = [1.0, 1.0]; uvR3 = [0.5, 1.0]
+
+        if n > 0:
+            for k in range(n):
+                theta = k * math.pi / n
+                dx = math.cos(theta)
+                dy = math.sin(theta)
+
+                dx2 = math.cos(theta + math.pi / n)
+                dy2 = math.sin(theta + math.pi / n)
+
+                dx3 = math.cos(theta + 2 * math.pi - math.pi / n)
+                dy3 = math.sin(theta + 2 * math.pi - math.pi / n)
+
+                xL = -w * dx
+                yL = -w * dy
+                xR = w * dx
+                yR = w * dy
+
+                #face normals
+                n0x, n0y = -dy, dx
+                n1x, n1y = dy2, -dx2
+                n2x, n2y = dy3, -dx3
+
+                #inner normal
+                axR, ayR = (n0x + n1x), (n0y + n1y)
+                axL, ayL = (n0x + n2x), (n0y + n2y)
+
+                alen = math.hypot(axR, ayR)
+                axR, ayR, axL, ayL = axR / alen, ayR / alen, axL / alen, ayL / alen
+
+
+                for p in range(2):
+                    s = (-1) ** p 
+
+                    base = len(vertices)
+
+                    vertices.append([0.0, 0.0, h])
+                    vertices.append([xR, yR, h])
+                    vertices.append([xR, yR, 0.0])
+                    vertices.append([0.0, 0.0, 0.0])
+
+                    uvs.extend([uvR0, uvR1, uvR2, uvR3])
+
+                    if p == 0:
+                        normals.append([s * axR, s * ayR, 0.0])
+                    if p == 1:
+                        normals.append([s * axL, s * ayL, 0.0])                    
+                    normals.append([s * n0x, s * n0y, 0.0])  
+                    normals.append([s * n0x, s * n0y, 0.0])
+                    if p == 0:
+                        normals.append([s * axR, s * ayR, 0.0])
+                    if p == 1:
+                        normals.append([s * axL, s * ayL, 0.0])   
+
+                    if p == 0:
+                        triangles.append([base + 2, base + 1, base + 0])
+                        triangles.append([base + 0, base + 3, base + 2])
+                    if p == 1:
+                        triangles.append([base + 0, base + 1, base + 2])
+                        triangles.append([base + 2, base + 3, base + 0])
+
+                    base = len(vertices)
+                    
+                    vertices.append([xL,  yL,  h])
+                    vertices.append([0.0, 0.0,  h])
+                    vertices.append([0.0, 0.0,  0])
+                    vertices.append([xL,  yL,  0])
+
+                    uvs.extend([uvL0, uvL1, uvL2, uvL3])
+
+                    
+                    normals.append([s * n0x, s * n0y, 0.0]) 
+                    if p == 0:
+                        normals.append([s * axL, s * ayL, 0.0])
+                        normals.append([s * axL, s * ayL, 0.0])
+                    if p == 1:
+                        normals.append([s * axR, s * ayR, 0.0])
+                        normals.append([s * axR, s * ayR, 0.0])      
+                    normals.append([s * n0x, s * n0y, 0.0])
+
+                    if p == 0:
+                        triangles.append([base + 2, base + 1, base + 0])
+                        triangles.append([base + 0, base + 3, base + 2])
+                    if p == 1:
+                        triangles.append([base + 0, base + 1, base + 2])
+                        triangles.append([base + 2, base + 3, base + 0])
+                        
+
+
+        return {'vertices': vertices, 'triangles': triangles, 'uvs': uvs, 'normals': normals}
+
+    def make_tree_shape_template(self, billboard_geometry):
+
+        nimaterial = pyffi.formats.nif.NifFormat.NiMaterialProperty()
+        nimaterial.alpha = 1
+        nimaterial.name = 'LODTree'
+
+        nitexture = pyffi.formats.nif.NifFormat.NiTexturingProperty()
+        nitexture.apply_mode = 2
+        nitexture.has_base_texture = True
+        nitexture.base_texture.source = pyffi.formats.nif.NifFormat.NiSourceTexture()
+        nitexture.base_texture.clamp_mode = 3 #WRAP_S_WRAP_T
+        nitexture.base_texture.filter_mode = 2 #TRILINEAR
+        nitexture.base_texture.source.file_name = b'textures\\trees\\billboards\\treeswampcypressforestfg08.dds'
+
+        nialpha = pyffi.formats.nif.NifFormat.NiAlphaProperty()
+        nialpha.flags = 4844 #4844 #RE for vanilla tree billboards  #4845
+        nialpha.threshold = 84 #250
+
+        nitrishape = pyffi.formats.nif.NifFormat.NiTriShape()
+        nitrishape.flags = 14
+        
+        nitrishape.num_properties = 3
+        nitrishape.properties.update_size()
+        nitrishape.properties[0] = nimaterial
+        nitrishape.properties[1] = nitexture
+        nitrishape.properties[2] = nialpha
+
+        nitrishape.rotation = self.ArraytoMatrix33(self.MatrixfromEulerAngles_zyx(0, 0, random.randint(0, 180)))
+
+        nitrishape.data = pyffi.formats.nif.NifFormat.NiTriShapeData()
+        nitrishape.data.has_normals = True
+        nitrishape.data.has_uv = True
+        nitrishape.data.consistency_flags = 16384
+        nitrishape.data.num_uv_sets = 1
+        nitrishape.data.num_vertices = len(billboard_geometry['vertices'])
+        nitrishape.data.num_triangles = len(billboard_geometry['triangles'])
+        nitrishape.data.num_triangle_points = len(billboard_geometry['triangles']) * 3
+
+        nitrishape.data.uv_sets.append(pyffi.object_models.xml.array._ListWrap(pyffi.formats.nif.NifFormat.TexCoord))
+
+
+
+        for v in billboard_geometry['vertices']:
+            temp_vertex = pyffi.formats.nif.NifFormat.Vector3()
+            temp_vertex.x = v[0]
+            temp_vertex.y = v[1]
+            temp_vertex.z = v[2]
+            nitrishape.data.vertices.append(temp_vertex)
+
+        for t in billboard_geometry['triangles']:
+            temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
+            temp_triangle.v_1 = t[0]
+            temp_triangle.v_2 = t[1]
+            temp_triangle.v_3 = t[2]
+            nitrishape.data.triangles.append(temp_triangle)
+
+        for n in billboard_geometry['normals']:
+            temp_normal = pyffi.formats.nif.NifFormat.Vector3()
+            temp_normal.x = n[0]
+            temp_normal.y = n[1]
+            temp_normal.z = n[2]
+            nitrishape.data.normals.append(temp_normal)
+
+        for uv in billboard_geometry['uvs']:
+            temp_uv = pyffi.formats.nif.NifFormat.TexCoord()
+            temp_uv.u = uv[0]
+            temp_uv.v = uv[1]
+            nitrishape.data.uv_sets[0].append(temp_uv)
+        return nitrishape
+
+    def init_tree_shape_template(self):
+
+        nimaterial = pyffi.formats.nif.NifFormat.NiMaterialProperty()
+        nimaterial.alpha = 1
+        nimaterial.name = 'LODTree'
+
+        nitexture = pyffi.formats.nif.NifFormat.NiTexturingProperty()
+        nitexture.apply_mode = 2
+        nitexture.has_base_texture = True
+        nitexture.base_texture.source = pyffi.formats.nif.NifFormat.NiSourceTexture()
+        nitexture.base_texture.clamp_mode = 3 #WRAP_S_WRAP_T
+        nitexture.base_texture.filter_mode = 2 #TRILINEAR
+        nitexture.base_texture.source.pixel_layout = 6 #LAY_DEFAULT
+        nitexture.base_texture.source.use_mipmaps = 1
+        nitexture.base_texture.source.alpha_format = 3
+        nitexture.base_texture.source.file_name = b'textures\\trees\\billboards\\treeswampcypressforestfg08.dds'
+
+        nialpha = pyffi.formats.nif.NifFormat.NiAlphaProperty()
+        nialpha.flags = 4845 #4844 #RE for vanilla tree billboards alpha property but makes them black for some reason  
+        nialpha.threshold = 100 #84 #250
+
+        nitrishape = pyffi.formats.nif.NifFormat.NiTriShape()
+        nitrishape.flags = 14
+        
+        nitrishape.num_properties = 3
+        nitrishape.properties.update_size()
+        nitrishape.properties[0] = nimaterial
+        nitrishape.properties[1] = nitexture
+        nitrishape.properties[2] = nialpha
+
+        nitrishape.data = pyffi.formats.nif.NifFormat.NiTriShapeData()
+        nitrishape.data.has_normals = True
+        nitrishape.data.has_uv = True
+        nitrishape.data.consistency_flags = 16384
+        nitrishape.data.num_uv_sets = 1
+
+        nitrishape.data.uv_sets.append(pyffi.object_models.xml.array._ListWrap(pyffi.formats.nif.NifFormat.TexCoord))
+
+        return nitrishape
+    
+
+    def update_tree_shape_template(self, nitrishape, billboard_geometry):
+        nitrishape.rotation = self.ArraytoMatrix33(self.MatrixfromEulerAngles_zyx(0, 0, random.randint(0, 180)))
+        
+        if nitrishape.data.num_vertices != len(billboard_geometry['vertices']):
+            nitrishape.data.num_vertices = len(billboard_geometry['vertices'])
+            nitrishape.data.num_triangles = len(billboard_geometry['triangles'])
+            nitrishape.data.num_triangle_points = len(billboard_geometry['triangles']) * 3
+            nitrishape.data.vertices.update_size()
+            nitrishape.data.triangles.update_size()
+            nitrishape.data.normals.update_size()
+            nitrishape.data.uv_sets.update_size()
+        
+
+        for i, v in enumerate(billboard_geometry['vertices']):
+            nitrishape.data.vertices[i].x = v[0]
+            nitrishape.data.vertices[i].y = v[1]
+            nitrishape.data.vertices[i].z = v[2]
+
+        for i, t in enumerate(billboard_geometry['triangles']):
+            nitrishape.data.triangles[i].v_1 = t[0]
+            nitrishape.data.triangles[i].v_2 = t[1]
+            nitrishape.data.triangles[i].v_3 = t[2]
+
+        for i, v in enumerate(billboard_geometry['normals']):
+            nitrishape.data.normals[i].x = v[0]
+            nitrishape.data.normals[i].y = v[1]
+            nitrishape.data.normals[i].z = v[2]
+
+        for i, uv in enumerate(billboard_geometry['uvs']):
+            nitrishape.data.uv_sets[0][i].u = uv[0]
+            nitrishape.data.uv_sets[0][i].v = uv[1]
+
+        for uv in billboard_geometry['uvs']:
+            temp_uv = pyffi.formats.nif.NifFormat.TexCoord()
+            temp_uv.u = uv[0]
+            temp_uv.v = uv[1]
+        
+        return nitrishape
+
     
     def collisions_process_capsule_object(self, node, translation, rotation, scale, material, layer, transform_matrix):
         #capsules are just copied
@@ -1324,18 +1847,24 @@ class NifProcessor:
                     vert_all_triangles_below_x = [True] * len(trishape.data.vertices)
                 else:
                     vert_all_triangles_below_x = [False] * len(trishape.data.vertices)
-                vertices_transformed = []
+                
 
-                for i, vertice in enumerate(trishape.data.vertices):
-                    adjusted_vector = np.matmul(f_scale * np.array([vertice.x, vertice.y, vertice.z]), m_rotation) + m_translation
+                m_rotation = np.array(m_rotation)
+                m_translation = np.array(m_translation)
 
+                vertices_ = []
+                for vertice in trishape.data.vertices:
+                    vertices_.append((vertice._x_value_._value, vertice._y_value_._value, vertice._z_value_._value))
+
+                vertices_transformed = np.matmul(f_scale * np.array(vertices_), m_rotation) + m_translation
+
+                for i, vertice in enumerate(vertices_transformed):
                     if self.Z_CULLING_FLAG:
-                        if adjusted_vector[2] < self.Z_CULLING_LEVEL:
+                        if vertice[2] < self.Z_CULLING_LEVEL:
                             vert_below_z[i] = True
-                    vertices_transformed.append(adjusted_vector)
 
                 if isinstance(trishape, pyffi.formats.nif.NifFormat.NiTriShape):
-                    triangles =  [(t.v_1, t.v_2, t.v_3) for t in trishape.data.triangles]
+                    triangles =  [(t._v_1_value_._value, t._v_2_value_._value, t._v_3_value_._value) for t in trishape.data.triangles]
                 else:
                     triangles = []
                     triangles = pyffi.utils.tristrip.triangulate(trishape.data.points)
@@ -1363,37 +1892,46 @@ class NifProcessor:
 
                 for triangle in triangles_data:
                     temp_triangle = pyffi.formats.nif.NifFormat.Triangle()
-                    temp_triangle.v_1 = vert_remap[triangle[0]] + vertices_offset
-                    temp_triangle.v_2 = vert_remap[triangle[1]] + vertices_offset
-                    temp_triangle.v_3 = vert_remap[triangle[2]] + vertices_offset
+                    temp_triangle._v_1_value_._value = vert_remap[triangle[0]] + vertices_offset
+                    temp_triangle._v_2_value_._value = vert_remap[triangle[1]] + vertices_offset
+                    temp_triangle._v_3_value_._value = vert_remap[triangle[2]] + vertices_offset
                     target_shape.data.triangles.append(temp_triangle)
 
                 for i, vertice in enumerate(vertices_transformed):
                     if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
                         continue
                     temp_vertice = pyffi.formats.nif.NifFormat.Vector3()
-                    temp_vertice.x = vertice[0]
-                    temp_vertice.y = vertice[1]
-                    temp_vertice.z = vertice[2]                         
+                    temp_vertice._x_value_._value = vertice[0]
+                    temp_vertice._y_value_._value = vertice[1]
+                    temp_vertice._z_value_._value = vertice[2]                         
                     target_shape.data.vertices.append(temp_vertice)
 
+                normals_ = []
 
-                for i, normal in enumerate(trishape.data.normals):
-                    if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
-                        continue
-                    normal_vector = np.matmul(np.array([normal.x, normal.y, normal.z]), m_rotation)
-                    temp_normal = pyffi.formats.nif.NifFormat.Vector3()
-                    temp_normal.x = normal_vector[0]
-                    temp_normal.y = normal_vector[1]
-                    temp_normal.z = normal_vector[2]
-                    target_shape.data.normals.append(temp_normal)
+                for normal in trishape.data.normals:
+                    normals_.append((normal._x_value_._value, normal._y_value_._value, normal._z_value_._value))
+
+                if len(normals_) > 0:
+                    normals_transformed = np.matmul(np.array(normals_), m_rotation)
+
+                    for i, normal in enumerate(normals_transformed):
+                        if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
+                            continue
+                        
+                        temp_normal = pyffi.formats.nif.NifFormat.Vector3()
+                        temp_normal._x_value_._value = normal[0]
+                        temp_normal._y_value_._value = normal[1]
+                        temp_normal._z_value_._value = normal[2]
+                        target_shape.data.normals.append(temp_normal)
 
                 for i, vertex in enumerate(trishape.data.vertex_colors):
+                    
                     if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
                         continue
                     target_shape.data.vertex_colors.append(vertex)
 
                 for i, uv in enumerate(trishape.data.uv_sets[0]):
+                    
                     if self.Z_CULLING_FLAG and vert_all_triangles_below_x[i]:
                         continue
                     if len(target_shape.data.uv_sets) == 0:
@@ -1462,7 +2000,7 @@ class NifProcessor:
 
                 vertice_list = np.zeros((len(shape.data.vertices), 3)) 
                 for i, vertice in enumerate(shape.data.vertices):
-                    vertice_list[i] = [vertice.x, vertice.y, vertice.z]
+                    vertice_list[i] = (vertice.x, vertice.y, vertice.z)
                 #average_point = np.mean(vertice_list, axis=0)
                 #distance = np.max(np.linalg.norm(vertice_list - average_point, axis=1))
                 
@@ -1482,7 +2020,7 @@ class NifProcessor:
 
         if len(center_list) == 0:
             pass
-        elif len(center_list) == 1:
+        elif len(center_list) >= 1:
             self.bounding_radius = max(np.linalg.norm(center) + distance for center, distance in zip(center_list, distance_list))
 
     def simple_nif_structure(self):
@@ -1518,7 +2056,7 @@ class NifProcessor:
         min_z = np.min(points[:, 2])
         max_z = np.max(points[:, 2])
 
-        center = np.array([(min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2])
+        center = np.array(((min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2))
          
         #radius = np.max([max_x - min_x, max_y - min_y, max_z - min_z]) / 2
 
