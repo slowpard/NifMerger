@@ -1640,7 +1640,87 @@ class NifProcessor:
         except Exception as e:
             logging.error(traceback.format_exc())
 
-  
+    def apply_texture_atlas(self, mesh_path, output_path=None):
+
+        if output_path is None:
+            output_path = mesh_path
+
+   
+        self.ReadAtlasData()
+
+        if not self.atlas_data:
+            logging.warning(f'No atlas data loaded, cannot apply texture atlas')
+            return
+        try:
+            stream = open(mesh_path, 'rb')
+            nif_data = pyffi.formats.nif.NifFormat.Data()
+            nif_data.read(stream)
+            stream.close()
+        except FileNotFoundError:
+            logging.error(f'File not found: {mesh_path}')
+            return
+        except Exception as e:
+            logging.error(f'Error reading NIF file {mesh_path}: {e}')
+            return
+
+
+        def process_node(node):
+
+            if isinstance(node, pyffi.formats.nif.NifFormat.NiTriShape) or isinstance(node, pyffi.formats.nif.NifFormat.NiTriStrips):
+
+                # Get atlas data for this shape
+                atlas_obj = self.ReturnAtlasData(node)
+
+                if atlas_obj:
+                    # Update texture path in NiTexturingProperty
+                    for property in node.properties:
+                        if isinstance(property, pyffi.formats.nif.NifFormat.NiTexturingProperty):
+                            if property.base_texture.source:
+                                # Update texture to atlas texture
+                                property.base_texture.source.file_name = atlas_obj['bin']
+                                logging.info(f'Updated texture for shape {node.name.decode("windows-1252")} to {atlas_obj["bin"]}')
+
+                    # Transform UVs
+                    if node.data and node.data.uv_sets and len(node.data.uv_sets) > 0:
+                        for uv in node.data.uv_sets[0]:
+                            # Apply atlas UV transformation
+                            original_u = uv.u
+                            original_v = uv.v
+                            uv.u = (original_u * atlas_obj['width'] + atlas_obj['x']) / atlas_obj['atlas_x']
+                            uv.v = (original_v * atlas_obj['height'] + atlas_obj['y']) / atlas_obj['atlas_y']
+
+                        logging.info(f'Applied UV transformation for shape {node.name.decode("windows-1252")}')
+                else:
+                    logging.debug(f'No atlas data found for shape {node.name.decode("windows-1252")}')
+
+
+            if hasattr(node, 'children'):
+                for child in node.children:
+                    if child:
+                        process_node(child)
+
+
+        for root in nif_data.roots:
+            if root:
+                process_node(root)
+
+
+        try:
+            directory = os.path.dirname(output_path)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory)
+
+            output_stream = open(output_path, 'wb')
+            nif_data.write(output_stream)
+            output_stream.close()
+
+            logging.info(f'Saved modified NIF to {output_path}')
+        except Exception as e:
+            logging.error(f'Error writing NIF file {output_path}: {e}')
+            return
+
+
+
     def process_nif_trigeometry(self, trishape, translation, rotation, scale):
 
         
