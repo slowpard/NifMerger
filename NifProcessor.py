@@ -1699,6 +1699,9 @@ class NifProcessor:
                     self.process_nif_trigeometry(child, m_translation, m_rotation, f_scale)
                 elif isinstance(child, pyffi.formats.nif.NifFormat.NiTriStrips):
                     self.process_nif_trigeometry(child, m_translation, m_rotation, f_scale)
+                elif isinstance(child, pyffi.formats.nif.NifFormat.NiParticles):
+                    #particle systems are runtime simulations, nothing static to merge
+                    logging.warning(f"{self.current_nif_path}: skipped particle system {child.name}")
                 else:
                     logging.warning(f"{self.current_nif_path}: Unexpected type in NiNode: {type(child)}")
                     
