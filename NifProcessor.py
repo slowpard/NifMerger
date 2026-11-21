@@ -386,6 +386,11 @@ class NifProcessor:
     #very high memory usage, so disabled by default
     CACHE_NIFS = False
 
+    #cache budget, counted in bytes of the .nif files on disk (not RAM)
+    #a parsed pyffi tree takes roughly 28x its file size in RAM (measured under PyPy), so 6 MB is ~170 MB
+    #caching needs nif_uses_left to be set, otherwise nifs are always loaded from disk
+    CACHE_BUDGET_BYTES = 6 * 1024 * 1024
+
     def __init__(self):
         self.master_nif = pyffi.formats.nif.NifFormat.Data()
         self.anim_list = []
@@ -398,6 +403,66 @@ class NifProcessor:
         self.texture_list = []
         self.bounding_radius = 0
         self.cached_nifs = {}
+        self.cached_sizes = {}
+        self.cache_used = 0
+        #nif path -> how many times ProcessNif will be called with it during the run (set by the caller)
+        #with that known, nifs used once are never cached, every nif leaves the cache after its last use,
+        #and when the budget is full, nifs with fewer remaining uses are evicted first
+        #(parse time and tree size both scale with file size, so remaining uses alone ranks the value)
+        self.nif_uses_left = None
+        self.cache_hits = 0
+        self.cache_loads = 0
+
+    def _cache_drop(self, nif_path):
+        if nif_path in self.cached_nifs:
+            del self.cached_nifs[nif_path]
+            self.cache_used -= self.cached_sizes.pop(nif_path)
+
+    def _cache_admit(self, nif_path, nif_data, uses_left):
+        size = os.path.getsize(nif_path)
+        if size > self.CACHE_BUDGET_BYTES:
+            return
+        free = self.CACHE_BUDGET_BYTES - self.cache_used
+        if free < size:
+            #only evict nifs that will be used fewer times than this one
+            victims = sorted((self.nif_uses_left.get(p, 0), -self.cached_sizes[p], p) for p in self.cached_nifs)
+            to_evict = []
+            for left, neg_size, p in victims:
+                if left >= uses_left:
+                    break
+                to_evict.append(p)
+                free -= neg_size
+                if free >= size:
+                    break
+            if free < size:
+                return
+            for p in to_evict:
+                self._cache_drop(p)
+        self.cached_nifs[nif_path] = nif_data
+        self.cached_sizes[nif_path] = size
+        self.cache_used += size
+
+    def _load_nif(self, nif_path):
+        with open(nif_path, 'rb') as stream:
+            data = pyffi.formats.nif.NifFormat.Data()
+            data.read(stream)
+        self.cache_loads += 1
+        return data
+
+    def _get_planned_nif(self, nif_path):
+        #decrement first, so a nif that fails to load still counts as used
+        uses_left = max(self.nif_uses_left.get(nif_path, 0) - 1, 0)
+        self.nif_uses_left[nif_path] = uses_left
+        data = self.cached_nifs.get(nif_path)
+        if data is None:
+            data = self._load_nif(nif_path)
+            if uses_left > 0:
+                self._cache_admit(nif_path, data, uses_left)
+        else:
+            self.cache_hits += 1
+            if uses_left == 0:
+                self._cache_drop(nif_path)
+        return data
 
     def MatrixfromEulerAngles(self, x, y, z):
         #xyz
@@ -1888,6 +1953,10 @@ class NifProcessor:
                     trishape_t.properties.update_size()
                     trishape_t.properties[-1] = type(k)().deepcopy(k)                    
                     if atlas_obj and isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
+                        #pyffi's deepcopy shares referenced blocks, so the copy still points at the source's NiSourceTexture
+                        #renaming that would also rename it in the source nif (and in the cached tree on its next use)
+                        source_texture = k.base_texture.source
+                        trishape_t.properties[-1].base_texture.source = type(source_texture)().deepcopy(source_texture)
                         trishape_t.properties[-1].base_texture.source.file_name = texture_path
                     if isinstance(k, pyffi.formats.nif.NifFormat.NiTexturingProperty):
                         if k.base_texture.source:
@@ -2305,28 +2374,13 @@ class NifProcessor:
             self.shapes_merged = 0
             try:
                 try:
-                    if self.CACHE_NIFS:
-                        if not nif_path in self.cached_nifs:
-                            stream = open(nif_path, 'rb')
-                            nif_data = pyffi.formats.nif.NifFormat.Data()
-                            nif_data.read(stream)
-                            stream.close()
-                            stream = None
-                            self.cached_nifs[nif_path] = nif_data
-                        if nif_path in self.cached_nifs:
-                            data = self.cached_nifs[nif_path]
-                            self.process_nif_root(data, translation, rotation, scale)
-                            self.merged_data.append([nif_path, self.shapes_merged])
-                            data = None
+                    if self.CACHE_NIFS and self.nif_uses_left is not None:
+                        data = self._get_planned_nif(nif_path)
                     else:
-                        stream = open(nif_path, 'rb')
-                        data = pyffi.formats.nif.NifFormat.Data()
-                        data.read(stream)
-                        self.process_nif_root(data, translation, rotation, scale)
-                        self.merged_data.append([nif_path, self.shapes_merged])
-                        stream.close()
-                        data = None
-                        stream = None
+                        data = self._load_nif(nif_path)
+                    self.process_nif_root(data, translation, rotation, scale)
+                    self.merged_data.append([nif_path, self.shapes_merged])
+                    data = None
 
                 except FileNotFoundError:
                     logging.error(f'File not found: {nif_path}')
