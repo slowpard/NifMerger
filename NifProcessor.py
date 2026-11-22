@@ -954,26 +954,13 @@ class NifProcessor:
                     #plane_normal_a = np.array([((-1) ** 0) * (-dy), ((-1) ** 0) *dx, 0])
                     #plane_normal_b = np.array([((-1) ** 1) * (-dy), ((-1) ** 1) *dx, 0])
 
-                    normal = np.array((xL, yL, 2/3*h))
-                    length = np.linalg.norm(normal)
-                    normal = normal / length
-                    normals.append(normal)
-
-
-                    normal =  np.array((xR, yR, 2/3*h))
-                    length = np.linalg.norm(normal)
-                    normal = normal / length
-                    normals.append(normal)
-
-                    normal =  np.array((xR, yR, -h/16))
-                    length = np.linalg.norm(normal)
-                    normal = normal / length
-                    normals.append(normal)                    
-
-                    normal =  np.array((xL, yL, -h/16))
-                    length = np.linalg.norm(normal)
-                    normal = normal / length
-                    normals.append(normal)                    
+                    #crown-like normals: out along the card from the trunk, the top corners tilted 45 degrees up, the bottom
+                    #ones 10 degrees down; fixed angles, so every tree is lit the same whatever the card's proportions
+                    top, bottom = math.radians(45), math.radians(-10)
+                    normals.append([-dx * math.cos(top), -dy * math.cos(top), math.sin(top)])
+                    normals.append([dx * math.cos(top), dy * math.cos(top), math.sin(top)])
+                    normals.append([dx * math.cos(bottom), dy * math.cos(bottom), math.sin(bottom)])
+                    normals.append([-dx * math.cos(bottom), -dy * math.cos(bottom), math.sin(bottom)])
 
 
 
